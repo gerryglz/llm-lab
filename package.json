@@ -10,7 +10,8 @@
     "eval:normal": "node dist/eval.js",
     "eval:hard": "node dist/eval-hard.js",
     "eval:blind": "node dist/eval-blind.js",
-    "eval:answers": "node dist/eval-answer.js"
+    "eval:answers": "node dist/eval-answer.js",
+    "eval:source": "node dist/eval-source.js"
   },
   "keywords": [],
   "author": "",
