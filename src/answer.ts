@@ -1,0 +1,184 @@
+import OpenAI from 'openai';
+
+import { isDiceThroneQuestion } from './domain-classifier.js';
+import { rewriteQuery } from './query-rewriter.js';
+import { findRulebookChunks, type RulebookRetrievalResult } from './rulebook-retrieval.js';
+import { rerankChunks } from './reranker.js';
+
+const _client = new OpenAI({
+    baseURL: 'http://127.0.0.1:1234/v1',
+    apiKey: 'lm-studio'
+});
+
+const _model = 'qwen/qwen3-8b';
+
+export const UNSUPPORTED_MESSAGE =
+    'That question is not answerable from the Dice Throne rulebook.';
+
+export const INSUFFICIENT_MESSAGE =
+    "I don't have enough rulebook evidence to answer that confidently.";
+
+export type AnswerCitation = {
+    id: string;
+    page: number;
+    section: string;
+};
+
+export type AnswerResult = {
+    status: 'answered' | 'unsupported' | 'insufficient';
+    answer: string;
+    citations: AnswerCitation[];
+    retrievalQuery?: string;
+};
+
+type ModelAnswer = {
+    supported: boolean;
+    answer: string;
+    sourceIds: string[];
+};
+
+function parseModelAnswer(content: string): ModelAnswer | null {
+    const _json = content
+        .replace(/^```json\s*/i, '')
+        .replace(/```$/i, '')
+        .trim();
+
+    try {
+        const _parsed = JSON.parse(_json) as Partial<ModelAnswer>;
+
+        if (
+            typeof _parsed.supported !== 'boolean' ||
+            typeof _parsed.answer !== 'string' ||
+            !Array.isArray(_parsed.sourceIds) ||
+            !_parsed.sourceIds.every((id) => typeof id === 'string')
+        ) {
+            return null;
+        }
+
+        return _parsed as ModelAnswer;
+    } catch {
+        return null;
+    }
+}
+
+export async function answerQuestion(question: string): Promise<AnswerResult> {
+    if (!(await isDiceThroneQuestion(question))) {
+        return {
+            status: 'unsupported',
+            answer: UNSUPPORTED_MESSAGE,
+            citations: []
+        };
+    }
+
+    const _retrievalQuery = await rewriteQuery(question);
+    const _candidates = await findRulebookChunks(question, _retrievalQuery, 10);
+
+    if (_candidates.length === 0) {
+        return {
+            status: 'insufficient',
+            answer: INSUFFICIENT_MESSAGE,
+            citations: [],
+            retrievalQuery: _retrievalQuery
+        };
+    }
+
+    const _topCandidate = _candidates[0];
+    const _strongStructuredMatch = Boolean(
+        _topCandidate &&
+        _topCandidate.score >= 0.68 &&
+        _topCandidate.section.toLowerCase() !== `page ${_topCandidate.page}`
+    );
+
+    const _evidence = _strongStructuredMatch && _topCandidate
+        ? [_topCandidate]
+        : await rerankChunks(question, _candidates, 3);
+
+    if (_evidence.length === 0) {
+        return {
+            status: 'insufficient',
+            answer: INSUFFICIENT_MESSAGE,
+            citations: [],
+            retrievalQuery: _retrievalQuery
+        };
+    }
+
+    const _context = _evidence
+        .map((source) =>
+            `[${source.id}] Page ${source.page} — ${source.section}\n${source.content}`
+        )
+        .join('\n\n');
+
+    const _response = await _client.chat.completions.create({
+        model: _model,
+        temperature: 0,
+        max_tokens: 220,
+        messages: [
+            {
+                role: 'system',
+                content: `
+/no_think
+
+You answer Dice Throne rules questions using only supplied rulebook excerpts.
+
+Return ONLY valid JSON:
+{
+  "supported": true,
+  "answer": "A concise answer without a citation suffix.",
+  "sourceIds": ["exact-source-id"]
+}
+
+Rules:
+- Set supported to true only when the excerpts directly establish the answer.
+- Never use outside knowledge, fill gaps, or infer a missing rule.
+- If evidence is insufficient or conflicting, set supported to false, answer to an empty string, and sourceIds to an empty array.
+- Cite only source IDs that directly support the answer.
+- Use only IDs present in the supplied excerpts.
+- Keep the answer concise and practical.
+                `.trim()
+            },
+            {
+                role: 'user',
+                content: `RULEBOOK EXCERPTS:\n\n${_context}\n\nQUESTION:\n${question}`
+            }
+        ]
+    });
+
+    const _modelAnswer = parseModelAnswer(
+        _response.choices[0]?.message.content ?? ''
+    );
+
+    if (!_modelAnswer?.supported || !_modelAnswer.answer.trim()) {
+        return {
+            status: 'insufficient',
+            answer: INSUFFICIENT_MESSAGE,
+            citations: [],
+            retrievalQuery: _retrievalQuery
+        };
+    }
+
+    const _sourceIds = new Set(_modelAnswer.sourceIds);
+    const _citations = _evidence
+        .filter((source) => _sourceIds.has(source.id))
+        .map((source) => ({
+            id: source.id,
+            page: source.page,
+            section: source.section
+        }));
+
+    if (_citations.length === 0) {
+        return {
+            status: 'insufficient',
+            answer: INSUFFICIENT_MESSAGE,
+            citations: [],
+            retrievalQuery: _retrievalQuery
+        };
+    }
+
+    return {
+        status: 'answered',
+        answer: _modelAnswer.answer.trim(),
+        citations: _citations,
+        retrievalQuery: _retrievalQuery
+    };
+}
+
