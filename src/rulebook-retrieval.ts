@@ -321,6 +321,54 @@ function getIntentScore(
         if (_section.includes('PHASE')) _score -= 0.04;
     }
 
+    if (/\b(maximum hand|hand size|too many cards|holding (?:six|seven|eight|nine|\d+) cards)\b/i.test(question)) {
+        if (_section === 'DISCARD PHASE') _score += 0.18;
+        if (_section === 'STACK LIMITS') _score -= 0.08;
+    }
+
+    if (/\b(play|spend CP on)\b[^?.!]*\b(upgrades?|hero upgrades?)\b/i.test(question) &&
+        !/\bafter (?:an? )?(?:attack|attacking)\b/i.test(question)) {
+        if (_section === 'MAIN PHASE (1)') _score += 0.18;
+    }
+
+    if (/\b(starting player|first turn)\b[^?.!]*\b(draw|card|income)\b/i.test(question)) {
+        if (_section === 'INCOME PHASE') _score += 0.24;
+        if (_section === 'GAME SETUP') _score -= 0.06;
+    }
+
+    if (/\b(total rolls|first roll|reroll)\b[^?.!]*\b(attack|activate|ability|dice)\b/i.test(question) &&
+        !/\b(defend|defense|defensive)\b/i.test(question)) {
+        if (_section === 'OFFENSIVE ROLL PHASE') _score += 0.22;
+        if (_section === 'DEFENSIVE ROLL PHASE') _score -= 0.06;
+    }
+
+    if (/\b(defender|defending player)\b[^?.!]*\b(attempt|roll|defensive ability|defense)\b/i.test(question)) {
+        if (_section === 'DEFENSIVE ROLL PHASE') _score += 0.22;
+    }
+
+    if (/\b(play|spend)\b[^?.!]*\b(cards?|CP)\b[^?.!]*\bafter attack(?:ing)?\b/i.test(question)) {
+        if (_section === 'MAIN PHASE (2)') _score += 0.34;
+        if (_section === 'MAIN PHASE (1)') _score -= 0.08;
+    }
+
+    if (/\b(number next to|normal limit|stack (?:mean|maximum|limit))\b/i.test(question)) {
+        if (_section === 'STACK LIMITS') _score += 0.20;
+        if (_section === 'INCREASING STACK LIMIT') _score -= 0.06;
+    }
+
+    if (/\b(undefendable|collateral damage|ignores? (?:a )?defensive ability|kind of damage|types? of damage)\b/i.test(question)) {
+        if (_section === 'DAMAGE TYPES') _score += 0.22;
+        if (_section === 'DEFENSIVE ROLL PHASE') _score -= 0.05;
+    }
+
+    if (/\b(attack modifiers?|modify the damage)\b/i.test(question)) {
+        if (_section === 'ATTACK MODIFIERS') _score += 0.22;
+    }
+
+    if (/\b(choose|select|figure out)\b[^?.!]*\b(target|who (?:I am|I'm) attacking|opponent)\b/i.test(question)) {
+        if (_section === 'TARGETING ROLL PHASE') _score += 0.18;
+    }
+
     if (/\b(play|spend CP on)\b[^?.!]*\b(upgrade|card)\b[^?.!]*\bafter (?:an? )?(?:attack|attacking)\b/i.test(question)) {
         if (_section === 'MAIN PHASE (2)') _score += 0.20;
         if (_section === 'MAIN PHASE (1)') _score -= 0.06;
