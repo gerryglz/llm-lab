@@ -1,5 +1,9 @@
 import OpenAI from 'openai';
 
+import {
+    resolveConversationalQuestion,
+    type ConversationTurn
+} from './conversation.js';
 import { isDiceThroneQuestion } from './domain-classifier.js';
 import { rewriteQuery } from './query-rewriter.js';
 import { findRulebookChunks, type RulebookRetrievalResult } from './rulebook-retrieval.js';
@@ -126,8 +130,16 @@ function parseModelAnswer(content: string): ModelAnswer | null {
     }
 }
 
-export async function answerQuestion(question: string): Promise<AnswerResult> {
-    if (!(await isDiceThroneQuestion(question))) {
+export async function answerQuestion(
+    question: string,
+    history: readonly ConversationTurn[] = []
+): Promise<AnswerResult> {
+    const _standaloneQuestion = await resolveConversationalQuestion(
+        question,
+        history
+    );
+
+    if (!(await isDiceThroneQuestion(_standaloneQuestion))) {
         return {
             status: 'unsupported',
             answer: UNSUPPORTED_MESSAGE,
@@ -139,8 +151,12 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
         };
     }
 
-    const _retrievalQuery = await rewriteQuery(question);
-    const _candidates = await findRulebookChunks(question, _retrievalQuery, 10);
+    const _retrievalQuery = await rewriteQuery(_standaloneQuestion);
+    const _candidates = await findRulebookChunks(
+        _standaloneQuestion,
+        _retrievalQuery,
+        10
+    );
 
     if (_candidates.length === 0) {
         return {
@@ -153,6 +169,17 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
     }
 
     const _topCandidate = _candidates[0];
+    const _directSetupMatch =
+        /\b(?:shuffle|starting hand|draw.*(?:start|beginning))\b/i.test(
+            _standaloneQuestion
+        )
+            ? _candidates.find(
+                (candidate) =>
+                    candidate.sourceId === 'core-rulebook' &&
+                    /shuffle your cards/i.test(candidate.content) &&
+                    /this is your starting hand/i.test(candidate.content)
+            )
+            : undefined;
     const _strongStructuredMatch = Boolean(
         _topCandidate &&
         _topCandidate.sourceId === 'core-rulebook' &&
@@ -160,9 +187,11 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
         _topCandidate.section.toLowerCase() !== `page ${_topCandidate.page}`
     );
 
-    const _evidence = _strongStructuredMatch && _topCandidate
-        ? [_topCandidate]
-        : await rerankChunks(question, _candidates, 3);
+    const _evidence = _directSetupMatch
+        ? [_directSetupMatch]
+        : _strongStructuredMatch && _topCandidate
+            ? [_topCandidate]
+            : await rerankChunks(_standaloneQuestion, _candidates, 3);
 
     if (_evidence.length === 0) {
         return {
@@ -210,7 +239,7 @@ Rules:
             },
             {
                 role: 'user',
-                content: `RULEBOOK EXCERPTS:\n\n${_context}\n\nQUESTION:\n${question}`
+                content: `RULEBOOK EXCERPTS:\n\n${_context}\n\nQUESTION:\n${_standaloneQuestion}`
             }
         ]
     });
