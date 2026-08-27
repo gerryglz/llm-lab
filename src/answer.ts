@@ -149,6 +149,16 @@ function isCpPerTurnLimitQuestion(question: string): boolean {
         /\b(?:CP|combat points?)\b[^?.!]*\b(?:spend|spending)\b[^?.!]*\b(?:per|each) turn\b/i.test(question);
 }
 
+function isSellCardsTimingQuestion(question: string): boolean {
+    return /^\s*when\b[^?.!]*\b(?:sell|discard)\b[^?.!]*\bcards?\b/i.test(question) ||
+        /\b(?:what|which)\s+(?:phases?|times?)\b[^?.!]*\b(?:sell|discard)\b[^?.!]*\bcards?\b/i.test(question);
+}
+
+function isDiscardDownForCpQuestion(question: string): boolean {
+    return /\b(?:gain|get|receive)\b[^?.!]*\bCP\b[^?.!]*\b(?:discard|sell)\b/i.test(question) ||
+        /\b(?:discard|sell)\b[^?.!]*\b(?:down to|six|6)\b[^?.!]*\bCP\b/i.test(question);
+}
+
 function toCitation(source: RulebookRetrievalResult): AnswerCitation {
     return {
         id: source.id,
@@ -191,6 +201,72 @@ export async function answerQuestion(
         _retrievalQuery,
         10
     );
+
+    if (isDiscardDownForCpQuestion(_standaloneQuestion)) {
+        const _discardRule = _candidates.find((candidate) =>
+            candidate.sourceId === 'core-rulebook' &&
+            candidate.section.includes('DISCARD PHASE') &&
+            /Sell cards for 1 CP each until you have 6 or fewer/i.test(
+                candidate.content
+            )
+        );
+
+        if (_discardRule) {
+            return {
+                status: 'answered',
+                answer: 'Yes. During the Discard Phase, you sell cards for 1 CP each until you have 6 or fewer cards in your hand.',
+                citations: [toCitation(_discardRule)],
+                evidence: {
+                    strength: 'high',
+                    summary: 'A primary rulebook passage directly defines discarding down as selling each card for 1 CP.'
+                },
+                retrievalQuery: _retrievalQuery
+            };
+        }
+    }
+
+    if (isSellCardsTimingQuestion(_standaloneQuestion)) {
+        const _phaseCandidates = await findRulebookChunks(
+            _standaloneQuestion,
+            'Main Phase 1 sell unwanted cards Main Phase 2 identical Discard Phase sell cards until 6',
+            30
+        );
+        const _allPhases = [..._candidates, ..._phaseCandidates];
+        const _mainOne = _allPhases.find((candidate) =>
+            candidate.sourceId === 'core-rulebook' &&
+            candidate.section.includes('MAIN PHASE (1)') &&
+            /Sell unwanted cards to gain 1 CP for each/i.test(candidate.content)
+        );
+        const _mainTwo = _allPhases.find((candidate) =>
+            candidate.sourceId === 'core-rulebook' &&
+            candidate.section.includes('MAIN PHASE (2)') &&
+            /Identical to Main Phase \(1\)/i.test(candidate.content)
+        );
+        const _discard = _allPhases.find((candidate) =>
+            candidate.sourceId === 'core-rulebook' &&
+            candidate.section.includes('DISCARD PHASE') &&
+            /Sell cards for 1 CP each until you have 6 or fewer/i.test(
+                candidate.content
+            )
+        );
+
+        if (_mainOne && _mainTwo && _discard) {
+            return {
+                status: 'answered',
+                answer: 'You may sell unwanted cards for 1 CP each during Main Phase (1) or Main Phase (2), which is identical to Main Phase (1). During the Discard Phase, if you have more than 6 cards, you must sell cards for 1 CP each until you have 6 or fewer.',
+                citations: [
+                    toCitation(_mainOne),
+                    toCitation(_mainTwo),
+                    toCitation(_discard)
+                ],
+                evidence: {
+                    strength: 'high',
+                    summary: 'Three primary rulebook passages establish both optional Main Phase selling and mandatory Discard Phase selling.'
+                },
+                retrievalQuery: _retrievalQuery
+            };
+        }
+    }
 
     if (isCpPerTurnLimitQuestion(_standaloneQuestion)) {
         const _constraintCandidates = await findRulebookChunks(
