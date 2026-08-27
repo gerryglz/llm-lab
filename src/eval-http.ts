@@ -63,7 +63,9 @@ async function main(): Promise<void> {
         const _clientPass = _clientScript.status === 200 &&
             _clientScript.headers.get('content-type')?.includes('text/javascript') === true &&
             _clientText.includes('conversationHistory') &&
-            _clientText.includes('citation.sourceTitle');
+            _clientText.includes('citation.sourceTitle') &&
+            _clientText.includes('connectClaimsToSources') &&
+            _clientText.includes('citation.dataset.sourceId');
 
         const _chat = await fetch(`${_baseUrl}/api/chat`, {
             method: 'POST',

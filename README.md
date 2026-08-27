@@ -15,7 +15,7 @@ The flow is:
 5. Rerank the evidence and generate a concise grounded answer.
 6. Return the source title, page, section, and chunk ID with the answer.
 
-The answer contract also includes an evidence summary designed for a future chat UI. It labels evidence strength, explains why the sources are sufficient, distinguishes primary rules from official clarifications, and includes short source excerpts that can be expanded in the interface.
+The answer contract also includes an evidence summary designed for the chat UI. It labels evidence strength, explains why the sources are sufficient, distinguishes primary rules from official clarifications, and includes the complete retrieved passages behind expandable source cards. Excerpts are normalized for reading but are not cut off at an arbitrary character limit.
 
 The browser keeps the six most recent user and assistant messages so follow-ups such as “Do I shuffle first?” can be rewritten as standalone questions. Conversation text is used only to resolve references; every final answer must still be supported by newly retrieved official evidence. Use **New conversation** to clear that local context.
 
@@ -26,6 +26,8 @@ Questions that ask **when** something may happen are checked for every applicabl
 Before retrieval policies run, a deterministic question planner labels the request as a direct fact, timing question, limit, sequence, or inheritance question. That plan selects an evidence strategy such as one direct passage, every applicable window, related constraints, or linked rules. The API returns this interpretation and the browser displays it beneath the answer, making retrieval behavior easier to inspect.
 
 Generated answers are also divided into independently supported claims. Every claim carries the exact IDs of the passages that justify it; if the model returns a missing or unknown source ID, the whole generated answer is rejected. The browser shows this claim-to-source map before the expandable excerpts, so answer grounding can be audited without reading implementation logs.
+
+Select a numbered claim in the browser to open and highlight only the excerpts that support it. Select the claim again to clear the filter and return to the complete evidence list.
 
 ## Sources and authority
 

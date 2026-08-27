@@ -62,7 +62,8 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp
 .interpretation { margin-top: 10px !important; color: #80939c; font-size: .72rem; text-transform: capitalize; }
 .claim-list { display: grid; gap: 7px; margin-top: 14px; }
 .claim-list[hidden] { display: none; }
-.claim { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: start; padding: 9px 10px; color: var(--muted); background: rgba(7, 14, 18, .32); border-radius: 10px; font-size: .78rem; line-height: 1.45; }
+.claim { display: grid; width: 100%; grid-template-columns: auto 1fr auto; gap: 9px; align-items: start; padding: 9px 10px; color: var(--muted); text-align: left; background: rgba(7, 14, 18, .32); border: 1px solid transparent; border-radius: 10px; font-size: .78rem; line-height: 1.45; }
+.claim:hover, .claim:focus-visible, .claim.active { color: var(--ink); background: rgba(91, 193, 183, .08); border-color: rgba(91, 193, 183, .45); outline: none; }
 .claim-marker { display: grid; width: 19px; height: 19px; place-items: center; color: #071113; background: var(--teal); border-radius: 50%; font-size: .65rem; font-weight: 900; }
 .claim-support { color: var(--teal); white-space: nowrap; }
 .welcome-card h2 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 1.6rem; }
@@ -79,6 +80,8 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp
 .strength-badge.none { color: var(--ink); background: #52616a; }
 .citation-list { display: grid; gap: 9px; margin-top: 12px; }
 .citation { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+.citation.claim-source { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(91, 193, 183, .1); }
+.citation.not-claim-source { opacity: .36; }
 .citation summary { display: flex; gap: 9px; align-items: center; padding: 12px; list-style: none; cursor: pointer; }
 .citation summary::-webkit-details-marker { display: none; }
 .citation-title { flex: 1; font-size: .82rem; }
