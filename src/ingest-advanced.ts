@@ -31,20 +31,32 @@ function parsePages(text: string): DocumentPage[] {
             page: index + 1,
             content: content
                 .replace(/^\s*\d+\s*$/m, '')
-                .replace(/\s+/g, ' ')
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .join('\n')
                 .trim()
         }))
         .filter((page) => page.content.length >= 40);
 }
 
 function findSection(content: string, current: string): string {
-    for (const _heading of _majorHeadings) {
-        if (content.includes(_heading)) return _heading;
+    const _lines = content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    for (const _line of _lines) {
+        const _major = _majorHeadings.find(
+            (heading) => _line === heading ||
+                new RegExp(`^\\d+\\.\\s+${heading}$`, 'i').test(_line)
+        );
+        if (_major) return _major;
     }
 
-    const _specific = content.match(
-        /(?:^|\s)(?:Cards|Combat Points|Dice Rolling|Status Effects|Key Terms|Timing|Roll Phase|Targeting Roll Phase|Defensive Roll Phase|Discard Phase)(?=\s|$)/i
-    )?.[0]?.trim();
+    const _specific = _lines.find((line) =>
+        /^(?:Cards|Combat Points|Dice Rolling|Status Effects|Key Terms|Timing|Roll Phase|Targeting Roll Phase|Defensive Roll Phase|Discard Phase)$/i.test(line)
+    );
 
     return _specific ?? current;
 }
@@ -55,16 +67,17 @@ function chunkPages(pages: DocumentPage[], chunkSize = 1400): DocumentChunk[] {
 
     for (const _page of pages) {
         _currentSection = findSection(_page.content, _currentSection);
+        const _pageContent = _page.content.replace(/\s+/g, ' ').trim();
 
-        for (let _start = 0, _part = 1; _start < _page.content.length; _part++) {
-            let _end = Math.min(_start + chunkSize, _page.content.length);
-            const _boundary = _page.content.lastIndexOf('. ', _end);
+        for (let _start = 0, _part = 1; _start < _pageContent.length; _part++) {
+            let _end = Math.min(_start + chunkSize, _pageContent.length);
+            const _boundary = _pageContent.lastIndexOf('. ', _end);
 
-            if (_boundary > _start + 500 && _end < _page.content.length) {
+            if (_boundary > _start + 500 && _end < _pageContent.length) {
                 _end = _boundary + 1;
             }
 
-            const _content = _page.content.slice(_start, _end).trim();
+            const _content = _pageContent.slice(_start, _end).trim();
 
             if (_content.length >= 40) {
                 _chunks.push({
@@ -78,7 +91,7 @@ function chunkPages(pages: DocumentPage[], chunkSize = 1400): DocumentChunk[] {
                 });
             }
 
-            if (_end >= _page.content.length) break;
+            if (_end >= _pageContent.length) break;
             _start = Math.max(_end - 180, _start + 1);
         }
     }
