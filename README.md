@@ -25,6 +25,8 @@ Questions that ask **when** something may happen are checked for every applicabl
 
 Before retrieval policies run, a deterministic question planner labels the request as a direct fact, timing question, limit, sequence, or inheritance question. That plan selects an evidence strategy such as one direct passage, every applicable window, related constraints, or linked rules. The API returns this interpretation and the browser displays it beneath the answer, making retrieval behavior easier to inspect.
 
+Generated answers are also divided into independently supported claims. Every claim carries the exact IDs of the passages that justify it; if the model returns a missing or unknown source ID, the whole generated answer is rejected. The browser shows this claim-to-source map before the expandable excerpts, so answer grounding can be audited without reading implementation logs.
+
 ## Sources and authority
 
 The source order matters:

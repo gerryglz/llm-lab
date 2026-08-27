@@ -7,6 +7,7 @@ import { createHttpApi } from './http-api.js';
 const _fixture: AnswerResult = {
     status: 'answered',
     answer: 'A test answer.',
+    claims: [{ text: 'A test answer.', sourceIds: ['page-1-1'] }],
     evidence: {
         strength: 'high',
         summary: 'A primary rulebook passage directly supports this answer.'
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
         const _chatPass = _chat.status === 200 &&
             _chatBody.answer === _fixture.answer &&
             _chatBody.evidence.strength === 'high' &&
+            _chatBody.claims?.[0]?.sourceIds[0] === 'page-1-1' &&
             _questions[0] === 'test question';
 
         const _followUp = await fetch(`${_baseUrl}/api/chat`, {

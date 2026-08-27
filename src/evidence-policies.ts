@@ -131,11 +131,43 @@ async function resolveCombatPointLimit(
     };
 }
 
+function resolveShortDeckLook(
+    question: string,
+    candidates: readonly RulebookRetrievalResult[]
+): PolicyResolution | null {
+    if (!/\blook\b[^?.!]*\btop\b[^?.!]*\bcards?\b/i.test(question) ||
+        !/\b(?:only|less|fewer|remain)\b/i.test(question)) {
+        return null;
+    }
+
+    const _ruling = candidates.find((candidate) =>
+        candidate.sourceId === 'advanced-rules' &&
+        /You cannot shuffle your deck or re-shuffle your deck/i.test(
+            candidate.content
+        )
+    );
+    if (!_ruling) return null;
+
+    return {
+        status: 'answered',
+        answer: 'No. Look only at the cards remaining in your deck; do not shuffle first. You shuffle the discard pile into a new deck only when you need to draw a card and the deck is empty.',
+        evidenceStrength: 'high',
+        evidenceSummary: 'An official clarification directly addresses looking at more cards than remain in the deck.',
+        sources: [{
+            source: _ruling,
+            excerptFocus: /You can only look at the remaining cards/i
+        }]
+    };
+}
+
 export async function resolveEvidencePolicy(
     plan: QuestionPlan,
     question: string,
     candidates: readonly RulebookRetrievalResult[]
 ): Promise<PolicyResolution | null> {
+    const _shortDeckLook = resolveShortDeckLook(question, candidates);
+    if (_shortDeckLook) return _shortDeckLook;
+
     if (plan.topic === 'card-selling') {
         return resolveCardSelling(plan, question, candidates);
     }
