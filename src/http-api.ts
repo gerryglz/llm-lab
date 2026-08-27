@@ -7,11 +7,16 @@ import {
 import fs from 'node:fs/promises';
 
 import { answerQuestion, type AnswerResult } from './answer.js';
+import type { ConversationTurn } from './conversation.js';
 
-export type AnswerProvider = (question: string) => Promise<AnswerResult>;
+export type AnswerProvider = (
+    question: string,
+    history?: readonly ConversationTurn[]
+) => Promise<AnswerResult>;
 export type ReadinessProvider = () => Promise<boolean>;
 
 const _maximumBodyBytes = 16 * 1024;
+const _maximumHistoryTurns = 6;
 const _staticFiles = new Map<string, readonly [string, string]>([
     ['/', ['public/index.html', 'text/html; charset=utf-8']],
     ['/styles.css', ['public/styles.css', 'text/css; charset=utf-8']],
@@ -67,6 +72,33 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
     return JSON.parse(Buffer.concat(_chunks).toString('utf8')) as unknown;
 }
 
+function parseHistory(body: object): ConversationTurn[] | null {
+    if (!('history' in body) || body.history === undefined) return [];
+    if (!Array.isArray(body.history) || body.history.length > _maximumHistoryTurns) {
+        return null;
+    }
+
+    const _history: ConversationTurn[] = [];
+    for (const _turn of body.history) {
+        if (
+            typeof _turn !== 'object' ||
+            _turn === null ||
+            !('role' in _turn) ||
+            (_turn.role !== 'user' && _turn.role !== 'assistant') ||
+            !('content' in _turn) ||
+            typeof _turn.content !== 'string' ||
+            !_turn.content.trim() ||
+            _turn.content.length > 2000
+        ) {
+            return null;
+        }
+
+        _history.push({ role: _turn.role, content: _turn.content.trim() });
+    }
+
+    return _history;
+}
+
 async function checkLmStudio(): Promise<boolean> {
     try {
         const _response = await fetch('http://127.0.0.1:1234/v1/models', {
@@ -117,16 +149,19 @@ async function handleRequest(
             'question' in _body && typeof _body.question === 'string'
             ? _body.question.trim()
             : '';
+        const _history = typeof _body === 'object' && _body !== null
+            ? parseHistory(_body)
+            : null;
 
-        if (!_question) {
+        if (!_question || _history === null) {
             sendJson(response, 400, {
                 error: 'invalid-question',
-                message: 'Provide a non-empty question string.'
+                message: 'Provide a question and at most 6 valid conversation turns.'
             });
             return;
         }
 
-        const _result = await answer(_question);
+        const _result = await answer(_question, _history);
         sendJson(response, 200, _result);
     } catch (error) {
         const _knownClientError = error instanceof SyntaxError ||
