@@ -21,6 +21,8 @@ The browser keeps the six most recent user and assistant messages so follow-ups 
 
 The assistant also distinguishes an explicit rule from silence in the rules. When official passages establish related constraints but do not state the requested limit, the result is labeled **partial evidence** and says that the rule was not specified. It never converts “no limit was found” into “unlimited” or permission to act.
 
+Questions that ask **when** something may happen are checked for every applicable timing window. For example, card selling combines Main Phase (1), Main Phase (2)'s inherited rules, and the mandatory Discard Phase procedure instead of returning the first correct passage as though it were complete.
+
 ## Sources and authority
 
 The source order matters:
@@ -133,6 +135,7 @@ Each suite has a distinct job:
 - `npm run eval:evidence` checks the UI-ready evidence explanation contract.
 - `npm run eval:conversation` checks contextual follow-up resolution and grounding.
 - `npm run eval:assumptions` checks that an unstated limit is not turned into permission.
+- `npm run eval:completeness` checks multi-passage timing answers and inherited phase rules.
 - `npm run eval:http` checks the local API protocol without calling LM Studio.
 - `npm run eval:source` checks repaired core-rulebook facts.
 - `npm run eval:advanced` checks advanced rulings and document provenance.
