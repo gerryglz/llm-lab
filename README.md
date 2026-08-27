@@ -17,6 +17,8 @@ The flow is:
 
 The answer contract also includes an evidence summary designed for a future chat UI. It labels evidence strength, explains why the sources are sufficient, distinguishes primary rules from official clarifications, and includes short source excerpts that can be expanded in the interface.
 
+The browser keeps the six most recent user and assistant messages so follow-ups such as “Do I shuffle first?” can be rewritten as standalone questions. Conversation text is used only to resolve references; every final answer must still be supported by newly retrieved official evidence. Use **New conversation** to clear that local context.
+
 ## Sources and authority
 
 The source order matters:
@@ -127,6 +129,7 @@ Each suite has a distinct job:
 - `npm run eval:blind` is the unseen holdout and must not be tuned against.
 - `npm run eval:answers` checks answer grounding and citations.
 - `npm run eval:evidence` checks the UI-ready evidence explanation contract.
+- `npm run eval:conversation` checks contextual follow-up resolution and grounding.
 - `npm run eval:http` checks the local API protocol without calling LM Studio.
 - `npm run eval:source` checks repaired core-rulebook facts.
 - `npm run eval:advanced` checks advanced rulings and document provenance.

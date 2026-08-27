@@ -13,6 +13,7 @@
     "eval:blind": "node dist/eval-blind.js",
     "eval:answers": "node dist/eval-answer.js",
     "eval:evidence": "node dist/eval-evidence.js",
+    "eval:conversation": "node dist/eval-conversation.js",
     "eval:http": "node dist/eval-http.js",
     "eval:source": "node dist/eval-source.js",
     "eval:advanced": "node dist/eval-advanced.js",
