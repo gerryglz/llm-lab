@@ -39,6 +39,25 @@ function addAssistantMessage(result) {
         interpretation.hidden = false;
     }
 
+    if (result.claims?.length) {
+        const claimList = message.querySelector('.claim-list');
+        result.claims.forEach((claim, index) => {
+            const item = document.createElement('div');
+            item.className = 'claim';
+            const marker = document.createElement('span');
+            marker.className = 'claim-marker';
+            marker.textContent = String(index + 1);
+            const text = document.createElement('span');
+            text.textContent = claim.text;
+            const support = document.createElement('span');
+            support.className = 'claim-support';
+            support.textContent = `${claim.sourceIds.length} source${claim.sourceIds.length === 1 ? '' : 's'}`;
+            item.append(marker, text, support);
+            claimList.append(item);
+        });
+        claimList.hidden = false;
+    }
+
     const strength = result.evidence?.strength ?? 'none';
     const badge = message.querySelector('.strength-badge');
     badge.textContent = `${strength} evidence`;
@@ -58,7 +77,7 @@ function addAssistantMessage(result) {
 
         const title = document.createElement('span');
         title.className = 'citation-title';
-        title.textContent = citation.section;
+        title.textContent = citation.sourceTitle;
 
         const page = document.createElement('span');
         page.className = 'citation-page';

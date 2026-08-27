@@ -60,6 +60,11 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp
 .message-label { margin-bottom: 10px; color: var(--teal); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .user-message .message-label { color: rgba(7,17,19,.64); }
 .interpretation { margin-top: 10px !important; color: #80939c; font-size: .72rem; text-transform: capitalize; }
+.claim-list { display: grid; gap: 7px; margin-top: 14px; }
+.claim-list[hidden] { display: none; }
+.claim { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: start; padding: 9px 10px; color: var(--muted); background: rgba(7, 14, 18, .32); border-radius: 10px; font-size: .78rem; line-height: 1.45; }
+.claim-marker { display: grid; width: 19px; height: 19px; place-items: center; color: #071113; background: var(--teal); border-radius: 50%; font-size: .65rem; font-weight: 900; }
+.claim-support { color: var(--teal); white-space: nowrap; }
 .welcome-card h2 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 1.6rem; }
 .suggestions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
 .suggestions button { padding: 9px 12px; color: var(--ink); background: transparent; border: 1px solid rgba(91,193,183,.35); border-radius: 999px; }

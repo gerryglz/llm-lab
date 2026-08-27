@@ -25,6 +25,8 @@ Questions that ask **when** something may happen are checked for every applicabl
 
 Before retrieval policies run, a deterministic question planner labels the request as a direct fact, timing question, limit, sequence, or inheritance question. That plan selects an evidence strategy such as one direct passage, every applicable window, related constraints, or linked rules. The API returns this interpretation and the browser displays it beneath the answer, making retrieval behavior easier to inspect.
 
+Generated answers are also divided into independently supported claims. Every claim carries the exact IDs of the passages that justify it; if the model returns a missing or unknown source ID, the whole generated answer is rejected. The browser shows this claim-to-source map before the expandable excerpts, so answer grounding can be audited without reading implementation logs.
+
 ## Sources and authority
 
 The source order matters:
@@ -33,6 +35,8 @@ The source order matters:
 2. **Official Dice Throne Rulings and Clarifications** is the second source for edge cases, card interactions, timing questions, heroes, and advanced game modes. The repository includes a PDF snapshot and its extracted text/chunks. The living source is the [official Google Doc](https://docs.google.com/document/d/1_GJz22nkGmcEjThXgEUlb8OykrNNigs33xpSywnwTRc/edit?usp=sharing).
 
 The assistant keeps provenance on every chunk. Citations therefore identify which document established the answer instead of presenting all retrieved text as one anonymous rulebook.
+
+Source titles are canonicalized from their source IDs when the index loads. This prevents an older locally generated index from displaying a subsection name—such as Dice Throne Missions—as though it were the title of the complete clarification document.
 
 ## Run the chat interface locally
 

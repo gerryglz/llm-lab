@@ -71,6 +71,11 @@ const _indexPath =
 
 let _chunks: RulebookChunk[] | null = null;
 
+const _sourceTitles: Record<RulebookChunk['sourceId'], string> = {
+    'core-rulebook': 'Dice Throne Rulebook v2.4.3',
+    'advanced-rules': 'Official Dice Throne Rulings and Clarifications'
+};
+
 const _turnPhases = [
     'UPKEEP PHASE',
     'INCOME PHASE',
@@ -92,8 +97,10 @@ async function loadChunks(): Promise<RulebookChunk[]> {
         'utf-8'
     );
 
-    _chunks =
-        JSON.parse(_raw) as RulebookChunk[];
+    _chunks = (JSON.parse(_raw) as RulebookChunk[]).map((chunk) => ({
+        ...chunk,
+        sourceTitle: _sourceTitles[chunk.sourceId]
+    }));
 
     console.log(
         `Loaded ${_chunks.length} indexed rulebook chunks.`

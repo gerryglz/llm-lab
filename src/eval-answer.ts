@@ -79,6 +79,7 @@ async function main(): Promise<void> {
     let _statusCorrect = 0;
     let _contentCorrect = 0;
     let _citationCorrect = 0;
+    let _claimGroundingCorrect = 0;
     let _answeredCases = 0;
 
     console.log('\nDice Throne Grounded Answer Evaluation\n');
@@ -109,6 +110,16 @@ async function main(): Promise<void> {
 
             if (_contentMatch) _contentCorrect++;
             if (_citationMatch) _citationCorrect++;
+            const _citationIds = new Set(
+                _result.citations.map((citation) => citation.id)
+            );
+            const _claimGroundingMatch =
+                Boolean(_result.claims?.length) &&
+                _result.claims!.every((claim) =>
+                    claim.sourceIds.length > 0 &&
+                    claim.sourceIds.every((id) => _citationIds.has(id))
+                );
+            if (_claimGroundingMatch) _claimGroundingCorrect++;
         }
 
         console.log(`Question: ${_test.question}`);
@@ -130,6 +141,7 @@ async function main(): Promise<void> {
     console.log(`Status accuracy:          ${_percent(_statusCorrect, _evalCases.length)}%`);
     console.log(`Answer content checks:    ${_percent(_contentCorrect, _answeredCases)}%`);
     console.log(`Citation accuracy:        ${_percent(_citationCorrect, _answeredCases)}%`);
+    console.log(`Claim grounding:          ${_percent(_claimGroundingCorrect, _answeredCases)}%`);
 }
 
 main().catch((_error) => {

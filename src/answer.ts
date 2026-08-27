@@ -40,19 +40,24 @@ export type AnswerEvidence = {
     summary: string;
 };
 
+export type AnswerClaim = {
+    text: string;
+    sourceIds: string[];
+};
+
 export type AnswerResult = {
     status: 'answered' | 'not-specified' | 'unsupported' | 'insufficient';
     answer: string;
     citations: AnswerCitation[];
     evidence: AnswerEvidence;
+    claims?: AnswerClaim[];
     retrievalQuery?: string;
     interpretation?: QuestionPlan;
 };
 
 type ModelAnswer = {
     supported: boolean;
-    answer: string;
-    sourceIds: string[];
+    claims: AnswerClaim[];
 };
 
 function createExcerpt(content: string, maximumLength = 240): string {
@@ -120,9 +125,16 @@ function parseModelAnswer(content: string): ModelAnswer | null {
 
         if (
             typeof _parsed.supported !== 'boolean' ||
-            typeof _parsed.answer !== 'string' ||
-            !Array.isArray(_parsed.sourceIds) ||
-            !_parsed.sourceIds.every((id) => typeof id === 'string')
+            !Array.isArray(_parsed.claims) ||
+            !_parsed.claims.every((claim) =>
+                typeof claim === 'object' &&
+                claim !== null &&
+                typeof claim.text === 'string' &&
+                claim.text.trim().length > 0 &&
+                Array.isArray(claim.sourceIds) &&
+                claim.sourceIds.length > 0 &&
+                claim.sourceIds.every((id) => typeof id === 'string')
+            )
         ) {
             return null;
         }
@@ -213,6 +225,10 @@ export async function answerQuestion(
         return {
             status: _policy.status,
             answer: _policy.answer,
+            claims: _citations.length > 0 ? [{
+                text: _policy.answer,
+                sourceIds: _citations.map((citation) => citation.id)
+            }] : undefined,
             citations: _citations,
             evidence: {
                 strength: _policy.evidenceStrength,
@@ -248,9 +264,11 @@ export async function answerQuestion(
             : undefined;
     const _strongStructuredMatch = Boolean(
         _topCandidate &&
-        _topCandidate.sourceId === 'core-rulebook' &&
-        _topCandidate.score >= 0.68 &&
-        _topCandidate.section.toLowerCase() !== `page ${_topCandidate.page}`
+        _topCandidate.section.toLowerCase() !== `page ${_topCandidate.page}` &&
+        ((_topCandidate.sourceId === 'core-rulebook' &&
+            _topCandidate.score >= 0.68) ||
+            (_topCandidate.sourceId === 'advanced-rules' &&
+                _topCandidate.score >= 0.9))
     );
 
     const _evidence = _directSetupMatch
@@ -291,15 +309,19 @@ You answer Dice Throne rules questions using only supplied rulebook excerpts.
 Return ONLY valid JSON:
 {
   "supported": true,
-  "answer": "A concise answer without a citation suffix.",
-  "sourceIds": ["exact-source-id"]
+  "claims": [
+    { "text": "One concise factual claim.", "sourceIds": ["exact-source-id"] }
+  ]
 }
 
 Rules:
 - Set supported to true only when the excerpts directly establish the answer.
 - Never use outside knowledge, fill gaps, or infer a missing rule.
-- If evidence is insufficient or conflicting, set supported to false, answer to an empty string, and sourceIds to an empty array.
-- Cite only source IDs that directly support the answer.
+- Break the answer into independently supportable claims. Usually one or two claims are enough.
+- Every claim must have at least one source ID that directly supports that exact claim.
+- For a yes-or-no question, begin the first claim with "Yes" or "No", then state the supporting condition.
+- Preserve qualifications such as timing, reduced costs, exceptions, and what happens when there are too few cards.
+- If any necessary claim is unsupported or evidence conflicts, set supported to false and claims to an empty array.
 - Use only IDs present in the supplied excerpts.
 - Keep the answer concise and practical.
                 `.trim()
@@ -315,7 +337,7 @@ Rules:
         _response.choices[0]?.message.content ?? ''
     );
 
-    if (!_modelAnswer?.supported || !_modelAnswer.answer.trim()) {
+    if (!_modelAnswer?.supported || _modelAnswer.claims.length === 0) {
         return {
             status: 'insufficient',
             answer: INSUFFICIENT_MESSAGE,
@@ -326,7 +348,27 @@ Rules:
         };
     }
 
-    const _sourceIds = new Set(_modelAnswer.sourceIds);
+    const _availableSourceIds = new Set(_evidence.map((source) => source.id));
+    const _claims = _modelAnswer.claims.map((claim) => ({
+        text: claim.text.trim(),
+        sourceIds: [...new Set(claim.sourceIds)]
+    }));
+    const _claimsAreGrounded = _claims.every((claim) =>
+        claim.sourceIds.every((id) => _availableSourceIds.has(id))
+    );
+
+    if (!_claimsAreGrounded) {
+        return {
+            status: 'insufficient',
+            answer: INSUFFICIENT_MESSAGE,
+            citations: [],
+            evidence: explainEvidence([]),
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
+        };
+    }
+
+    const _sourceIds = new Set(_claims.flatMap((claim) => claim.sourceIds));
     const _citations = _evidence
         .filter((source) => _sourceIds.has(source.id))
         .map(toCitation);
@@ -344,7 +386,8 @@ Rules:
 
     return {
         status: 'answered',
-        answer: _modelAnswer.answer.trim(),
+        answer: _claims.map((claim) => claim.text).join(' '),
+        claims: _claims,
         citations: _citations,
         evidence: explainEvidence(_citations),
         retrievalQuery: _retrievalQuery,
