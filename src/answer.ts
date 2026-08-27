@@ -24,12 +24,21 @@ export type AnswerCitation = {
     sourceTitle: string;
     page: number;
     section: string;
+    role: 'primary-rule' | 'official-clarification';
+    excerpt: string;
+    relevance: number;
+};
+
+export type AnswerEvidence = {
+    strength: 'high' | 'medium' | 'none';
+    summary: string;
 };
 
 export type AnswerResult = {
     status: 'answered' | 'unsupported' | 'insufficient';
     answer: string;
     citations: AnswerCitation[];
+    evidence: AnswerEvidence;
     retrievalQuery?: string;
 };
 
@@ -38,6 +47,60 @@ type ModelAnswer = {
     answer: string;
     sourceIds: string[];
 };
+
+function createExcerpt(content: string, maximumLength = 240): string {
+    const _normalized = content.replace(/\s+/g, ' ').trim();
+
+    if (_normalized.length <= maximumLength) return _normalized;
+
+    const _candidate = _normalized.slice(0, maximumLength);
+    const _sentenceEnd = Math.max(
+        _candidate.lastIndexOf('. '),
+        _candidate.lastIndexOf('? '),
+        _candidate.lastIndexOf('! ')
+    );
+
+    return `${_candidate.slice(0, _sentenceEnd > 100 ? _sentenceEnd + 1 : maximumLength).trim()}…`;
+}
+
+function explainEvidence(citations: AnswerCitation[]): AnswerEvidence {
+    if (citations.length === 0) {
+        return {
+            strength: 'none',
+            summary: 'No source passage directly supports an answer.'
+        };
+    }
+
+    const _hasCoreRule = citations.some(
+        (citation) => citation.role === 'primary-rule'
+    );
+    const _hasClarification = citations.some(
+        (citation) => citation.role === 'official-clarification'
+    );
+    const _bestRelevance = Math.max(
+        ...citations.map((citation) => citation.relevance)
+    );
+    const _strength = _bestRelevance >= 0.72 ? 'high' : 'medium';
+
+    if (_hasCoreRule && _hasClarification) {
+        return {
+            strength: _strength,
+            summary: 'The core rule and an official clarification directly support this answer.'
+        };
+    }
+
+    if (_hasClarification) {
+        return {
+            strength: _strength,
+            summary: 'An official advanced ruling directly addresses this interaction.'
+        };
+    }
+
+    return {
+        strength: _strength,
+        summary: 'A primary rulebook passage directly supports this answer.'
+    };
+}
 
 function parseModelAnswer(content: string): ModelAnswer | null {
     const _json = content
@@ -68,7 +131,11 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
         return {
             status: 'unsupported',
             answer: UNSUPPORTED_MESSAGE,
-            citations: []
+            citations: [],
+            evidence: {
+                strength: 'none',
+                summary: 'The question is outside what the official Dice Throne rules sources can answer.'
+            }
         };
     }
 
@@ -80,6 +147,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
             status: 'insufficient',
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
+            evidence: explainEvidence([]),
             retrievalQuery: _retrievalQuery
         };
     }
@@ -101,6 +169,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
             status: 'insufficient',
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
+            evidence: explainEvidence([]),
             retrievalQuery: _retrievalQuery
         };
     }
@@ -155,6 +224,7 @@ Rules:
             status: 'insufficient',
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
+            evidence: explainEvidence([]),
             retrievalQuery: _retrievalQuery
         };
     }
@@ -162,12 +232,17 @@ Rules:
     const _sourceIds = new Set(_modelAnswer.sourceIds);
     const _citations = _evidence
         .filter((source) => _sourceIds.has(source.id))
-        .map((source) => ({
+        .map((source): AnswerCitation => ({
             id: source.id,
             sourceId: source.sourceId,
             sourceTitle: source.sourceTitle,
             page: source.page,
-            section: source.section
+            section: source.section,
+            role: source.sourceId === 'core-rulebook'
+                ? 'primary-rule'
+                : 'official-clarification',
+            excerpt: createExcerpt(source.content),
+            relevance: Number(source.score.toFixed(3))
         }));
 
     if (_citations.length === 0) {
@@ -175,6 +250,7 @@ Rules:
             status: 'insufficient',
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
+            evidence: explainEvidence([]),
             retrievalQuery: _retrievalQuery
         };
     }
@@ -183,6 +259,7 @@ Rules:
         status: 'answered',
         answer: _modelAnswer.answer.trim(),
         citations: _citations,
+        evidence: explainEvidence(_citations),
         retrievalQuery: _retrievalQuery
     };
 }

@@ -24,13 +24,19 @@ async function main(): Promise<void> {
 
                 console.log(`\nAssistant: ${_result.answer}`);
 
+                console.log(
+                    `\nEvidence: ${_result.evidence.strength.toUpperCase()} — ` +
+                    _result.evidence.summary
+                );
+
                 if (_result.citations.length > 0) {
                     console.log('\nSources:');
 
                     for (const _citation of _result.citations) {
                         console.log(
-                            `- ${_citation.sourceTitle}, page ${_citation.page}, ${_citation.section} [${_citation.id}]`
+                            `- ${_citation.sourceTitle}, page ${_citation.page}, ${_citation.section}`
                         );
+                        console.log(`  ${_citation.excerpt}`);
                     }
                 }
             } catch (_error) {

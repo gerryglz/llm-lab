@@ -15,6 +15,8 @@ The flow is:
 5. Rerank the evidence and generate a concise grounded answer.
 6. Return the source title, page, section, and chunk ID with the answer.
 
+The answer contract also includes an evidence summary designed for a future chat UI. It labels evidence strength, explains why the sources are sufficient, distinguishes primary rules from official clarifications, and includes short source excerpts that can be expanded in the interface.
+
 ## Sources and authority
 
 The source order matters:
@@ -64,6 +66,7 @@ Each suite has a distinct job:
 - `npm run eval:hard` is the visible development and stress suite.
 - `npm run eval:blind` is the unseen holdout and must not be tuned against.
 - `npm run eval:answers` checks answer grounding and citations.
+- `npm run eval:evidence` checks the UI-ready evidence explanation contract.
 - `npm run eval:source` checks repaired core-rulebook facts.
 - `npm run eval:advanced` checks advanced rulings and document provenance.
 
