@@ -16,6 +16,7 @@
     "eval:conversation": "node dist/eval-conversation.js",
     "eval:assumptions": "node dist/eval-assumptions.js",
     "eval:completeness": "node dist/eval-completeness.js",
+    "eval:planner": "node dist/eval-planner.js",
     "eval:http": "node dist/eval-http.js",
     "eval:source": "node dist/eval-source.js",
     "eval:advanced": "node dist/eval-advanced.js",
