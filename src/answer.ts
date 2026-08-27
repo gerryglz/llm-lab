@@ -20,6 +20,8 @@ export const INSUFFICIENT_MESSAGE =
 
 export type AnswerCitation = {
     id: string;
+    sourceId: 'core-rulebook' | 'advanced-rules';
+    sourceTitle: string;
     page: number;
     section: string;
 };
@@ -85,6 +87,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
     const _topCandidate = _candidates[0];
     const _strongStructuredMatch = Boolean(
         _topCandidate &&
+        _topCandidate.sourceId === 'core-rulebook' &&
         _topCandidate.score >= 0.68 &&
         _topCandidate.section.toLowerCase() !== `page ${_topCandidate.page}`
     );
@@ -104,7 +107,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
 
     const _context = _evidence
         .map((source) =>
-            `[${source.id}] Page ${source.page} — ${source.section}\n${source.content}`
+            `[${source.id}] ${source.sourceTitle}, page ${source.page} — ${source.section}\n${source.content}`
         )
         .join('\n\n');
 
@@ -161,6 +164,8 @@ Rules:
         .filter((source) => _sourceIds.has(source.id))
         .map((source) => ({
             id: source.id,
+            sourceId: source.sourceId,
+            sourceTitle: source.sourceTitle,
             page: source.page,
             section: source.section
         }));

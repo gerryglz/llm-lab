@@ -1,7 +1,7 @@
 {
   "name": "llm-lab",
   "version": "1.0.0",
-  "description": "",
+  "description": "A local, source-grounded Dice Throne rules assistant built with LM Studio.",
   "main": "index.js",
   "scripts": {
     "check": "tsc --noEmit",
@@ -11,7 +11,11 @@
     "eval:hard": "node dist/eval-hard.js",
     "eval:blind": "node dist/eval-blind.js",
     "eval:answers": "node dist/eval-answer.js",
-    "eval:source": "node dist/eval-source.js"
+    "eval:source": "node dist/eval-source.js",
+    "eval:advanced": "node dist/eval-advanced.js",
+    "ingest:core": "node dist/ingest.js",
+    "ingest:advanced": "node dist/ingest-advanced.js",
+    "index": "node dist/build-index.js"
   },
   "keywords": [],
   "author": "",

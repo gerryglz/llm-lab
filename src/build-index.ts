@@ -10,8 +10,10 @@ type IndexedDocumentChunk = DocumentChunk & {
     embedding: number[];
 };
 
-const _chunksFile =
-    './documents/dice-throne-chunks.json';
+const _chunkFiles = [
+    './documents/dice-throne-chunks.json',
+    './documents/dice-throne-advanced-rules-chunks.json'
+] as const;
 
 const _indexFile =
     './documents/dice-throne-index.json';
@@ -19,12 +21,26 @@ const _indexFile =
 const _batchSize = 10;
 
 async function loadChunks(): Promise<DocumentChunk[]> {
-    const _json = await fs.readFile(
-        _chunksFile,
-        'utf8'
+    const _sources = await Promise.all(
+        _chunkFiles.map(async (file) => {
+            const _json = await fs.readFile(file, 'utf8');
+            const _chunks = JSON.parse(_json) as Array<Partial<DocumentChunk> &
+                Pick<DocumentChunk, 'id' | 'page' | 'section' | 'content' | 'quality'>>;
+            const _isAdvanced = file.includes('advanced-rules');
+
+            return _chunks.map((chunk): DocumentChunk => ({
+                ...chunk,
+                sourceId: chunk.sourceId ??
+                    (_isAdvanced ? 'advanced-rules' : 'core-rulebook'),
+                sourceTitle: chunk.sourceTitle ??
+                    (_isAdvanced
+                        ? 'Official Dice Throne Rulings and Clarifications'
+                        : 'Dice Throne Rulebook v2.4.3')
+            }));
+        })
     );
 
-    return JSON.parse(_json) as DocumentChunk[];
+    return _sources.flat();
 }
 
 async function buildIndex(
@@ -48,7 +64,7 @@ async function buildIndex(
 
         const _inputs = _batch.map(
             (chunk) =>
-                `search_document: ${chunk.section}\n${chunk.content}`
+                `search_document: ${chunk.sourceTitle}\n${chunk.section}\n${chunk.content}`
         );
 
         const _embeddings =
@@ -113,3 +129,4 @@ main().catch((error) => {
     console.error(error);
     process.exit(1);
 });
+

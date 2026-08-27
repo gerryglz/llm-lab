@@ -30,6 +30,7 @@ Content:
 ${candidate.content}
 
 Metadata:
+Source: ${candidate.sourceTitle}
 Page ${candidate.page}
 Section: ${candidate.section}`
         )
@@ -125,3 +126,4 @@ ${_candidateText}
         return candidates.slice(0, limit);
     }
 }
+
