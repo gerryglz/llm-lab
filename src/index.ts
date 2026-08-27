@@ -29,7 +29,7 @@ async function main(): Promise<void> {
 
                     for (const _citation of _result.citations) {
                         console.log(
-                            `- Page ${_citation.page}, ${_citation.section} [${_citation.id}]`
+                            `- ${_citation.sourceTitle}, page ${_citation.page}, ${_citation.section} [${_citation.id}]`
                         );
                     }
                 }

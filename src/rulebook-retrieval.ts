@@ -7,6 +7,8 @@ import {
 
 type RulebookChunk = {
     id: string;
+    sourceId: 'core-rulebook' | 'advanced-rules';
+    sourceTitle: string;
     page: number;
     section: string;
     content: string;
@@ -16,6 +18,8 @@ type RulebookChunk = {
 
 export type RulebookRetrievalResult = {
     id: string;
+    sourceId: 'core-rulebook' | 'advanced-rules';
+    sourceTitle: string;
     page: number;
     section: string;
     content: string;
@@ -29,8 +33,38 @@ type RankedChunk = RulebookChunk & {
     structureScore: number;
     relationshipScore: number;
     intentScore: number;
+    phraseScore: number;
     rankingScore: number;
 };
+
+function getPhraseScore(question: string, chunk: RulebookChunk): number {
+    const _isClarificationQuestion =
+        /^(can|may|if|when)\b/i.test(question.trim());
+    const _isAdvancedRuling =
+        chunk.sourceId === 'advanced-rules' &&
+        /\b(?:Interaction Name|Situation|Ruling):/i.test(chunk.content);
+
+    if (!_isClarificationQuestion || !_isAdvancedRuling) {
+        return 0;
+    }
+
+    const _questionTokens = tokenize(question);
+    const _haystack = `${chunk.section} ${chunk.content}`.toLowerCase();
+    const _phrases = new Set<string>();
+
+    for (const _size of [3, 2]) {
+        for (let i = 0; i <= _questionTokens.length - _size; i++) {
+            _phrases.add(_questionTokens.slice(i, i + _size).join(' '));
+        }
+    }
+
+    let _matches = 0;
+    for (const _phrase of _phrases) {
+        if (_haystack.includes(_phrase)) _matches++;
+    }
+
+    return Math.min(_matches * 0.04, 0.20);
+}
 
 const _indexPath =
     './documents/dice-throne-index.json';
@@ -601,6 +635,12 @@ export async function findRulebookChunks(
                         chunk
                     );
 
+                const _phraseScore =
+                    getPhraseScore(
+                        originalQuestion,
+                        chunk
+                    );
+
                 const _rankingScore =
                     _semanticScore +
                     (
@@ -609,7 +649,8 @@ export async function findRulebookChunks(
                     ) +
                     _structureScore +
                     _relationshipScore +
-                    _intentScore;
+                    _intentScore +
+                    _phraseScore;
 
                 return {
                     ...chunk,
@@ -623,6 +664,8 @@ export async function findRulebookChunks(
                         _relationshipScore,
                     intentScore:
                         _intentScore,
+                    phraseScore:
+                        _phraseScore,
                     rankingScore:
                         _rankingScore
                 };
@@ -788,6 +831,8 @@ export async function findRulebookChunks(
             result
         ): RulebookRetrievalResult => ({
             id: result.id,
+            sourceId: result.sourceId,
+            sourceTitle: result.sourceTitle,
             page: result.page,
             section:
                 result.section,

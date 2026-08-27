@@ -11,8 +11,11 @@ export type DocumentSection = {
 
 export type DocumentChunk = {
     id: string;
+    sourceId: 'core-rulebook' | 'advanced-rules';
+    sourceTitle: string;
     page: number;
     section: string;
     content: string;
     quality: 'clean' | 'mixed';
 };
+

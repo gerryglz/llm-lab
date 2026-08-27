@@ -145,6 +145,8 @@ function createChunk(
 ): DocumentChunk {
     const _chunk = {
         id: `page-${page}-${index}`,
+        sourceId: 'core-rulebook' as const,
+        sourceTitle: 'Dice Throne Rulebook v2.4.3',
         page,
         section,
         content
@@ -426,3 +428,4 @@ async function main(): Promise<void> {
 }
 
 main().catch(console.error);
+
