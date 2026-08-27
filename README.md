@@ -36,6 +36,8 @@ Requirements:
 - `text-embedding-nomic-embed-text-v1.5` loaded for embeddings
 - `documents/dice-throne-rulebook.pdf` supplied locally before rebuilding the core source
 
+The core PDF is intentionally excluded from GitHub. After cloning or switching to a fresh checkout, place it at `documents/dice-throne-rulebook.pdf` before running `npm run ingest:core`. The repository already contains the extracted core text and chunks, so this step is only required when rebuilding that source.
+
 Install and build:
 
 ```sh
