@@ -37,6 +37,9 @@ const _sectionHeadings = [
     '5-6 PLAYER GAMES'
 ];
 
+const _rulebookPdfPath =
+    './documents/dice-throne-rulebook.pdf';
+
 async function extractPdfText(
     filePath: string
 ): Promise<string> {
@@ -362,8 +365,19 @@ function applyCorrections(
 }
 
 async function main(): Promise<void> {
+    try {
+        await fs.access(_rulebookPdfPath);
+    } catch {
+        throw new Error(
+            `Missing local core rulebook PDF at ${_rulebookPdfPath}. ` +
+            'This file is intentionally excluded from GitHub. Copy it into ' +
+            'the documents folder before running npm run ingest:core. ' +
+            'You can still use the versioned extracted chunks without rebuilding them.'
+        );
+    }
+
     const _text = await extractPdfText(
-        './documents/dice-throne-rulebook.pdf'
+        _rulebookPdfPath
     );
 
     const _pages = parsePages(_text);

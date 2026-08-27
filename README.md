@@ -36,6 +36,8 @@ Requirements:
 - `text-embedding-nomic-embed-text-v1.5` loaded for embeddings
 - `documents/dice-throne-rulebook.pdf` supplied locally before rebuilding the core source
 
+The core PDF is intentionally excluded from GitHub. After cloning or switching to a fresh checkout, place it at `documents/dice-throne-rulebook.pdf` before running `npm run ingest:core`. The repository already contains the extracted core text and chunks, so this step is only required when rebuilding that source.
+
 Install and build:
 
 ```sh
@@ -58,6 +60,22 @@ Start the assistant:
 npm start
 ```
 
+Start the local HTTP API:
+
+```sh
+npm run serve
+```
+
+The server listens on `http://127.0.0.1:3000` by default. Check readiness with `GET /api/health`, then ask a question with:
+
+```sh
+curl -X POST http://127.0.0.1:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Can Twice as Wild change only one die?"}'
+```
+
+The response contains the answer, evidence strength and explanation, source roles, excerpts, and relevance metadata. This is the stable boundary the future browser chat will consume.
+
 ## Evaluation suites
 
 Each suite has a distinct job:
@@ -67,6 +85,7 @@ Each suite has a distinct job:
 - `npm run eval:blind` is the unseen holdout and must not be tuned against.
 - `npm run eval:answers` checks answer grounding and citations.
 - `npm run eval:evidence` checks the UI-ready evidence explanation contract.
+- `npm run eval:http` checks the local API protocol without calling LM Studio.
 - `npm run eval:source` checks repaired core-rulebook facts.
 - `npm run eval:advanced` checks advanced rulings and document provenance.
 
