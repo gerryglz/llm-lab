@@ -39,7 +39,10 @@ async function main(): Promise<void> {
         const _result = await answerQuestion(_test.question);
         const _answer = _result.answer.toLowerCase();
         const _usesAdvancedSource = _result.citations.some(
-            (citation) => citation.sourceId === 'advanced-rules'
+            (citation) =>
+                citation.sourceId === 'advanced-rules' &&
+                citation.sourceTitle ===
+                    'Official Dice Throne Rulings and Clarifications'
         );
         const _hasTerms = _test.terms.every((term) =>
             _answer.includes(term.toLowerCase())
