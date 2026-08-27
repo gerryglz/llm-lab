@@ -70,6 +70,25 @@ Try these questions:
 
 If the badge says **Service unavailable**, confirm that LM Studio is running on port `1234` and that both configured models are loaded. If you change TypeScript files, rerun `npm run build` before restarting the server.
 
+If startup reports `EADDRINUSE` for port `3000`, an older copy of the server is still running. The new build did not start, and the browser is still using that older process. Return to the terminal running it, press `Ctrl+C`, and then run:
+
+```sh
+npm run build
+npm run serve
+```
+
+If you cannot find the old terminal, identify its process in PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+```
+
+Stop only the returned process ID with `Stop-Process -Id <process-id>`, then start the server again. A successful restart ends with:
+
+```text
+Dice Throne API ready at http://127.0.0.1:3000
+```
+
 ### Optional: terminal chat
 
 ```sh
