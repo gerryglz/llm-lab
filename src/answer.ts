@@ -5,6 +5,8 @@ import {
     type ConversationTurn
 } from './conversation.js';
 import { isDiceThroneQuestion } from './domain-classifier.js';
+import { resolveEvidencePolicy } from './evidence-policies.js';
+import { planQuestion, type QuestionPlan } from './question-planner.js';
 import { rewriteQuery } from './query-rewriter.js';
 import { findRulebookChunks, type RulebookRetrievalResult } from './rulebook-retrieval.js';
 import { rerankChunks } from './reranker.js';
@@ -44,6 +46,7 @@ export type AnswerResult = {
     citations: AnswerCitation[];
     evidence: AnswerEvidence;
     retrievalQuery?: string;
+    interpretation?: QuestionPlan;
 };
 
 type ModelAnswer = {
@@ -144,21 +147,6 @@ function createFocusedExcerpt(
     return `${_start > 0 ? '…' : ''}${_excerpt}${_start + maximumLength < _normalized.length ? '…' : ''}`;
 }
 
-function isCpPerTurnLimitQuestion(question: string): boolean {
-    return /\b(?:how many|how much|limit|maximum|max)\b[^?.!]*\b(?:CP|combat points?)\b[^?.!]*\b(?:spend|spending|per turn|each turn)\b/i.test(question) ||
-        /\b(?:CP|combat points?)\b[^?.!]*\b(?:spend|spending)\b[^?.!]*\b(?:per|each) turn\b/i.test(question);
-}
-
-function isSellCardsTimingQuestion(question: string): boolean {
-    return /^\s*when\b[^?.!]*\b(?:sell|discard)\b[^?.!]*\bcards?\b/i.test(question) ||
-        /\b(?:what|which)\s+(?:phases?|times?)\b[^?.!]*\b(?:sell|discard)\b[^?.!]*\bcards?\b/i.test(question);
-}
-
-function isDiscardDownForCpQuestion(question: string): boolean {
-    return /\b(?:gain|get|receive)\b[^?.!]*\bCP\b[^?.!]*\b(?:discard|sell)\b/i.test(question) ||
-        /\b(?:discard|sell)\b[^?.!]*\b(?:down to|six|6)\b[^?.!]*\bCP\b/i.test(question);
-}
-
 function toCitation(source: RulebookRetrievalResult): AnswerCitation {
     return {
         id: source.id,
@@ -182,6 +170,7 @@ export async function answerQuestion(
         question,
         history
     );
+    const _interpretation = planQuestion(_standaloneQuestion);
 
     if (!(await isDiceThroneQuestion(_standaloneQuestion))) {
         return {
@@ -191,7 +180,8 @@ export async function answerQuestion(
             evidence: {
                 strength: 'none',
                 summary: 'The question is outside what the official Dice Throne rules sources can answer.'
-            }
+            },
+            interpretation: _interpretation
         };
     }
 
@@ -202,111 +192,35 @@ export async function answerQuestion(
         10
     );
 
-    if (isDiscardDownForCpQuestion(_standaloneQuestion)) {
-        const _discardRule = _candidates.find((candidate) =>
-            candidate.sourceId === 'core-rulebook' &&
-            candidate.section.includes('DISCARD PHASE') &&
-            /Sell cards for 1 CP each until you have 6 or fewer/i.test(
-                candidate.content
-            )
-        );
+    const _policy = await resolveEvidencePolicy(
+        _interpretation,
+        _standaloneQuestion,
+        _candidates
+    );
 
-        if (_discardRule) {
-            return {
-                status: 'answered',
-                answer: 'Yes. During the Discard Phase, you sell cards for 1 CP each until you have 6 or fewer cards in your hand.',
-                citations: [toCitation(_discardRule)],
-                evidence: {
-                    strength: 'high',
-                    summary: 'A primary rulebook passage directly defines discarding down as selling each card for 1 CP.'
-                },
-                retrievalQuery: _retrievalQuery
-            };
-        }
-    }
+    if (_policy) {
+        const _citations = _policy.sources.map(({ source, excerptFocus }) => {
+            const _citation = toCitation(source);
+            if (excerptFocus) {
+                _citation.excerpt = createFocusedExcerpt(
+                    source.content,
+                    excerptFocus
+                );
+            }
+            return _citation;
+        });
 
-    if (isSellCardsTimingQuestion(_standaloneQuestion)) {
-        const _phaseCandidates = await findRulebookChunks(
-            _standaloneQuestion,
-            'Main Phase 1 sell unwanted cards Main Phase 2 identical Discard Phase sell cards until 6',
-            30
-        );
-        const _allPhases = [..._candidates, ..._phaseCandidates];
-        const _mainOne = _allPhases.find((candidate) =>
-            candidate.sourceId === 'core-rulebook' &&
-            candidate.section.includes('MAIN PHASE (1)') &&
-            /Sell unwanted cards to gain 1 CP for each/i.test(candidate.content)
-        );
-        const _mainTwo = _allPhases.find((candidate) =>
-            candidate.sourceId === 'core-rulebook' &&
-            candidate.section.includes('MAIN PHASE (2)') &&
-            /Identical to Main Phase \(1\)/i.test(candidate.content)
-        );
-        const _discard = _allPhases.find((candidate) =>
-            candidate.sourceId === 'core-rulebook' &&
-            candidate.section.includes('DISCARD PHASE') &&
-            /Sell cards for 1 CP each until you have 6 or fewer/i.test(
-                candidate.content
-            )
-        );
-
-        if (_mainOne && _mainTwo && _discard) {
-            return {
-                status: 'answered',
-                answer: 'You may sell unwanted cards for 1 CP each during Main Phase (1) or Main Phase (2), which is identical to Main Phase (1). During the Discard Phase, if you have more than 6 cards, you must sell cards for 1 CP each until you have 6 or fewer.',
-                citations: [
-                    toCitation(_mainOne),
-                    toCitation(_mainTwo),
-                    toCitation(_discard)
-                ],
-                evidence: {
-                    strength: 'high',
-                    summary: 'Three primary rulebook passages establish both optional Main Phase selling and mandatory Discard Phase selling.'
-                },
-                retrievalQuery: _retrievalQuery
-            };
-        }
-    }
-
-    if (isCpPerTurnLimitQuestion(_standaloneQuestion)) {
-        const _constraintCandidates = await findRulebookChunks(
-            _standaloneQuestion,
-            'Combat Points maximum 15 CP spend CP play cards during Main Phase',
-            30
-        );
-        const _allConstraints = [..._candidates, ..._constraintCandidates];
-        const _spendingRule = _allConstraints.find(
-            (candidate) =>
-                candidate.sourceId === 'core-rulebook' &&
-                /Spend CP to play Hero Upgrade cards or Main Phase Action cards/i.test(
-                    candidate.content
-                )
-        );
-        const _holdingRule = _allConstraints.find(
-            (candidate) =>
-                /(?:maximum of 15 CP|Maximum CP Limit[\s\S]{0,180}\b15\s*CP\b)/i.test(
-                    candidate.content
-                )
-        );
-
-        if (_spendingRule && _holdingRule) {
-            const _holdingCitation = toCitation(_holdingRule);
-            _holdingCitation.excerpt = createFocusedExcerpt(
-                _holdingRule.content,
-                /Maximum CP Limit|maximum of 15 CP/i
-            );
-
-            return {
-                status: 'not-specified',
-                answer: "I couldn't find an official rule that specifies a per-turn CP spending limit. The rules say CP is spent to play Hero Upgrade or Main Phase Action cards during the Main Phase, and that you may hold at most 15 CP. Those related rules do not establish a separate amount you may spend per turn.",
-                citations: [toCitation(_spendingRule), _holdingCitation],
-                evidence: {
-                    strength: 'partial',
-                    summary: 'Official passages establish related CP timing and capacity constraints, but do not directly specify the requested per-turn limit.'
-                },
-                retrievalQuery: _retrievalQuery
-            };
-        }
+        return {
+            status: _policy.status,
+            answer: _policy.answer,
+            citations: _citations,
+            evidence: {
+                strength: _policy.evidenceStrength,
+                summary: _policy.evidenceSummary
+            },
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
+        };
     }
 
     if (_candidates.length === 0) {
@@ -315,7 +229,8 @@ export async function answerQuestion(
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
             evidence: explainEvidence([]),
-            retrievalQuery: _retrievalQuery
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
         };
     }
 
@@ -350,7 +265,8 @@ export async function answerQuestion(
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
             evidence: explainEvidence([]),
-            retrievalQuery: _retrievalQuery
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
         };
     }
 
@@ -405,7 +321,8 @@ Rules:
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
             evidence: explainEvidence([]),
-            retrievalQuery: _retrievalQuery
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
         };
     }
 
@@ -420,7 +337,8 @@ Rules:
             answer: INSUFFICIENT_MESSAGE,
             citations: [],
             evidence: explainEvidence([]),
-            retrievalQuery: _retrievalQuery
+            retrievalQuery: _retrievalQuery,
+            interpretation: _interpretation
         };
     }
 
@@ -429,7 +347,8 @@ Rules:
         answer: _modelAnswer.answer.trim(),
         citations: _citations,
         evidence: explainEvidence(_citations),
-        retrievalQuery: _retrievalQuery
+        retrievalQuery: _retrievalQuery,
+        interpretation: _interpretation
     };
 }
 

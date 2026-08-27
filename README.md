@@ -23,6 +23,8 @@ The assistant also distinguishes an explicit rule from silence in the rules. Whe
 
 Questions that ask **when** something may happen are checked for every applicable timing window. For example, card selling combines Main Phase (1), Main Phase (2)'s inherited rules, and the mandatory Discard Phase procedure instead of returning the first correct passage as though it were complete.
 
+Before retrieval policies run, a deterministic question planner labels the request as a direct fact, timing question, limit, sequence, or inheritance question. That plan selects an evidence strategy such as one direct passage, every applicable window, related constraints, or linked rules. The API returns this interpretation and the browser displays it beneath the answer, making retrieval behavior easier to inspect.
+
 ## Sources and authority
 
 The source order matters:
@@ -136,6 +138,7 @@ Each suite has a distinct job:
 - `npm run eval:conversation` checks contextual follow-up resolution and grounding.
 - `npm run eval:assumptions` checks that an unstated limit is not turned into permission.
 - `npm run eval:completeness` checks multi-passage timing answers and inherited phase rules.
+- `npm run eval:planner` checks question categories and evidence strategies without calling LM Studio.
 - `npm run eval:http` checks the local API protocol without calling LM Studio.
 - `npm run eval:source` checks repaired core-rulebook facts.
 - `npm run eval:advanced` checks advanced rulings and document provenance.

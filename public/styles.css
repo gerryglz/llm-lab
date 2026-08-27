@@ -59,6 +59,7 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp
 .user-message { margin-left: auto; color: #071113; background: linear-gradient(135deg, #edc76c, var(--gold)); border-bottom-right-radius: 5px; }
 .message-label { margin-bottom: 10px; color: var(--teal); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .user-message .message-label { color: rgba(7,17,19,.64); }
+.interpretation { margin-top: 10px !important; color: #80939c; font-size: .72rem; text-transform: capitalize; }
 .welcome-card h2 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 1.6rem; }
 .suggestions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
 .suggestions button { padding: 9px 12px; color: var(--ink); background: transparent; border: 1px solid rgba(91,193,183,.35); border-radius: 999px; }

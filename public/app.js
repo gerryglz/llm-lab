@@ -31,6 +31,14 @@ function addAssistantMessage(result) {
     const message = fragment.querySelector('.message');
     message.querySelector('.answer-text').textContent = result.answer;
 
+    if (result.interpretation) {
+        const interpretation = message.querySelector('.interpretation');
+        const kind = result.interpretation.kind.replaceAll('-', ' ');
+        const strategy = result.interpretation.evidenceStrategy.replaceAll('-', ' ');
+        interpretation.textContent = `Interpreted as ${kind} · ${strategy}`;
+        interpretation.hidden = false;
+    }
+
     const strength = result.evidence?.strength ?? 'none';
     const badge = message.querySelector('.strength-badge');
     badge.textContent = `${strength} evidence`;
