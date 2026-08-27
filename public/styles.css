@@ -69,6 +69,7 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp
 .strength-badge, .role-badge { display: inline-flex; align-items: center; border-radius: 999px; font-size: .66rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 .strength-badge { padding: 5px 8px; color: #071113; background: var(--teal); }
 .strength-badge.medium { background: var(--gold); }
+.strength-badge.partial { color: var(--ink); background: #7a6843; }
 .strength-badge.none { color: var(--ink); background: #52616a; }
 .citation-list { display: grid; gap: 9px; margin-top: 12px; }
 .citation { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
