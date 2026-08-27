@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A source-grounded Dice Throne rules assistant.">
+    <title>Dice Throne Rules</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <main class="app-shell">
+        <header class="hero">
+            <div class="brand-mark" aria-hidden="true"><span>DT</span></div>
+            <div>
+                <p class="eyebrow">LOCAL RULES COMPANION</p>
+                <h1>Dice Throne Rules</h1>
+                <p class="subtitle">Official answers, with the evidence on the table.</p>
+            </div>
+            <div class="service-status" id="service-status" role="status">
+                <span class="status-dot"></span>
+                <span>Connecting</span>
+            </div>
+        </header>
+
+        <section class="chat-panel" aria-label="Rules conversation">
+            <div class="messages" id="messages" aria-live="polite">
+                <article class="message assistant-message welcome-card">
+                    <div class="message-label">Rules Assistant</div>
+                    <h2>What happens next?</h2>
+                    <p>Ask about setup, turn phases, status effects, cards, or an advanced interaction. I’ll answer only when the official sources support it.</p>
+                    <div class="suggestions" aria-label="Suggested questions">
+                        <button type="button" data-question="What happens during the Income Phase?">Income Phase</button>
+                        <button type="button" data-question="Can Twice as Wild change only one die?">Twice as Wild</button>
+                        <button type="button" data-question="How do stack limits work for status effects?">Stack limits</button>
+                    </div>
+                </article>
+            </div>
+
+            <form class="composer" id="chat-form">
+                <label class="sr-only" for="question">Ask a Dice Throne rules question</label>
+                <textarea id="question" name="question" rows="1" maxlength="2000" placeholder="Ask a Dice Throne rules question…" required></textarea>
+                <button class="send-button" type="submit" aria-label="Send question">
+                    <span>Ask</span><span aria-hidden="true">↗</span>
+                </button>
+            </form>
+            <p class="disclaimer">Answers are limited to the indexed official rules and clarifications.</p>
+        </section>
+    </main>
+
+    <template id="user-message-template">
+        <article class="message user-message">
+            <div class="message-label">You</div>
+            <p></p>
+        </article>
+    </template>
+
+    <template id="assistant-message-template">
+        <article class="message assistant-message">
+            <div class="message-label">Rules Assistant</div>
+            <p class="answer-text"></p>
+            <div class="evidence-summary">
+                <span class="strength-badge"></span>
+                <p></p>
+            </div>
+            <div class="citation-list"></div>
+        </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+</body>
+</html>
+

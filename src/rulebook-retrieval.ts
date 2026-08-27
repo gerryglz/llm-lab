@@ -352,6 +352,12 @@ function getIntentScore(
 
     if (_setupIntent) {
         if (_section === 'GAME SETUP') _score += 0.20;
+        if (
+            /\bstarting (?:hand|cards?)\b/i.test(question) &&
+            /\b(?:this is your starting hand|draw the top 4 cards)\b/i.test(chunk.content)
+        ) {
+            _score += 0.32;
+        }
         if (_section.includes('PHASE')) _score -= 0.04;
     }
 

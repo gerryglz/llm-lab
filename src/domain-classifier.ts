@@ -18,6 +18,14 @@ export async function isDiceThroneQuestion(
         return false;
     }
 
+    const _explicitRuleIntent =
+        /\b(?:income|upkeep|discard|offensive roll|defensive roll|targeting roll|main) phase\b/i.test(question) ||
+        /\b(?:starting hand|hand size|combat points?|\bCP\b|status effects?|roll attempts?|game setup)\b/i.test(question);
+
+    if (_explicitRuleIntent) {
+        return true;
+    }
+
     const _response =
         await _client.chat.completions.create({
             model: _model,

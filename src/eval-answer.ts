@@ -28,6 +28,18 @@ const _evalCases: readonly AnswerEvalCase[] = [
         expectedSection: 'INCOME PHASE'
     },
     {
+        question: 'Explain income phase',
+        expectedStatus: 'answered',
+        requiredAnswerTerms: ['draw'],
+        expectedSection: 'INCOME PHASE'
+    },
+    {
+        question: "What's my starting hand?",
+        expectedStatus: 'answered',
+        requiredAnswerTerms: ['4'],
+        expectedSection: 'Page 2'
+    },
+    {
         question: 'How do I remove a status effect?',
         expectedStatus: 'answered',
         expectedSection: 'REMOVING STATUS EFFECTS'

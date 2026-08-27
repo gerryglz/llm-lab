@@ -26,7 +26,7 @@ The source order matters:
 
 The assistant keeps provenance on every chunk. Citations therefore identify which document established the answer instead of presenting all retrieved text as one anonymous rulebook.
 
-## Local setup
+## Run the chat interface locally
 
 Requirements:
 
@@ -34,11 +34,19 @@ Requirements:
 - [LM Studio](https://lmstudio.ai/) running its local OpenAI-compatible server at `http://127.0.0.1:1234/v1`
 - `qwen/qwen3-8b` loaded for rewriting, classification, reranking, and answers
 - `text-embedding-nomic-embed-text-v1.5` loaded for embeddings
-- `documents/dice-throne-rulebook.pdf` supplied locally before rebuilding the core source
+- `documents/dice-throne-rulebook.pdf` is needed only if you intentionally rebuild the core source data
 
-The core PDF is intentionally excluded from GitHub. After cloning or switching to a fresh checkout, place it at `documents/dice-throne-rulebook.pdf` before running `npm run ingest:core`. The repository already contains the extracted core text and chunks, so this step is only required when rebuilding that source.
+The repository already contains the extracted chunks and searchable index. You do **not** need to run either ingestion command for normal use.
 
-Install and build:
+### 1. Prepare LM Studio
+
+1. Start LM Studio's local server at `http://127.0.0.1:1234/v1`.
+2. Load `qwen/qwen3-8b`.
+3. Load `text-embedding-nomic-embed-text-v1.5`.
+
+Both models must be available to the local server. The chat model handles classification, rewriting, reranking, and grounded answers; the embedding model handles retrieval.
+
+### 2. Install and build
 
 ```sh
 npm install
@@ -46,27 +54,61 @@ npm run check
 npm run build
 ```
 
-Rebuild source data and the combined index:
-
-```sh
-npm run ingest:core
-npm run ingest:advanced
-npm run index
-```
-
-Start the assistant:
-
-```sh
-npm start
-```
-
-Start the local HTTP API:
+### 3. Start the browser chat
 
 ```sh
 npm run serve
 ```
 
-The server listens on `http://127.0.0.1:3000` by default. Check readiness with `GET /api/health`, then ask a question with:
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The status badge should say **Rules index ready** before you submit a question.
+
+Try these questions:
+
+- `What's my starting hand?`
+- `Explain the Income Phase.`
+- `Can Twice as Wild change only one die?`
+
+If the badge says **Service unavailable**, confirm that LM Studio is running on port `1234` and that both configured models are loaded. If you change TypeScript files, rerun `npm run build` before restarting the server.
+
+If startup reports `EADDRINUSE` for port `3000`, an older copy of the server is still running. The new build did not start, and the browser is still using that older process. Return to the terminal running it, press `Ctrl+C`, and then run:
+
+```sh
+npm run build
+npm run serve
+```
+
+If you cannot find the old terminal, identify its process in PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
+```
+
+Stop only the returned process ID with `Stop-Process -Id <process-id>`, then start the server again. A successful restart ends with:
+
+```text
+Dice Throne API ready at http://127.0.0.1:3000
+```
+
+### Optional: terminal chat
+
+```sh
+npm start
+```
+
+### Optional: rebuild the source data
+
+Only do this when changing the source documents or ingestion code. The core PDF is intentionally excluded from GitHub, so first place it at `documents/dice-throne-rulebook.pdf`.
+
+```sh
+npm run ingest:core
+npm run ingest:advanced
+npm run index
+npm run build
+```
+
+### Optional: call the HTTP API directly
+
+With `npm run serve` still running:
 
 ```sh
 curl -X POST http://127.0.0.1:3000/api/chat \
