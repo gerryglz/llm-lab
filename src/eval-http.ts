@@ -59,9 +59,11 @@ async function main(): Promise<void> {
             _homeText.includes('Dice Throne Rules');
 
         const _clientScript = await fetch(`${_baseUrl}/app.js`);
+        const _clientText = await _clientScript.text();
         const _clientPass = _clientScript.status === 200 &&
             _clientScript.headers.get('content-type')?.includes('text/javascript') === true &&
-            (await _clientScript.text()).includes('conversationHistory');
+            _clientText.includes('conversationHistory') &&
+            _clientText.includes('citation.sourceTitle');
 
         const _chat = await fetch(`${_baseUrl}/api/chat`, {
             method: 'POST',
