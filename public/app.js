@@ -5,6 +5,9 @@ const status = document.querySelector('#service-status');
 const sendButton = form.querySelector('button[type="submit"]');
 const userTemplate = document.querySelector('#user-message-template');
 const assistantTemplate = document.querySelector('#assistant-message-template');
+const newConversationButton = document.querySelector('#new-conversation');
+const welcomeMarkup = messages.innerHTML;
+const conversationHistory = [];
 
 function scrollToLatest() {
     messages.scrollTop = messages.scrollHeight;
@@ -87,6 +90,7 @@ function addErrorMessage(message) {
 }
 
 async function askQuestion(question) {
+    const requestHistory = conversationHistory.slice(-6);
     addUserMessage(question);
     addPendingMessage();
     sendButton.disabled = true;
@@ -96,7 +100,7 @@ async function askQuestion(question) {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question })
+            body: JSON.stringify({ question, history: requestHistory })
         });
         const result = await response.json();
 
@@ -105,6 +109,13 @@ async function askQuestion(question) {
         }
 
         addAssistantMessage(result);
+        conversationHistory.push(
+            { role: 'user', content: question },
+            { role: 'assistant', content: result.answer }
+        );
+        if (conversationHistory.length > 6) {
+            conversationHistory.splice(0, conversationHistory.length - 6);
+        }
     } catch (error) {
         addErrorMessage(error instanceof Error
             ? error.message
@@ -138,12 +149,23 @@ input.addEventListener('keydown', (event) => {
     }
 });
 
-document.querySelectorAll('[data-question]').forEach((button) => {
-    button.addEventListener('click', () => {
-        input.value = button.dataset.question;
-        form.requestSubmit();
+function bindSuggestions() {
+    document.querySelectorAll('[data-question]').forEach((button) => {
+        button.addEventListener('click', () => {
+            input.value = button.dataset.question;
+            form.requestSubmit();
+        });
     });
+}
+
+newConversationButton.addEventListener('click', () => {
+    conversationHistory.length = 0;
+    messages.innerHTML = welcomeMarkup;
+    bindSuggestions();
+    input.focus();
 });
+
+bindSuggestions();
 
 fetch('/api/health')
     .then((response) => {
