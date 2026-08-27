@@ -36,6 +36,8 @@ The source order matters:
 
 The assistant keeps provenance on every chunk. Citations therefore identify which document established the answer instead of presenting all retrieved text as one anonymous rulebook.
 
+Source titles are canonicalized from their source IDs when the index loads. This prevents an older locally generated index from displaying a subsection name—such as Dice Throne Missions—as though it were the title of the complete clarification document.
+
 ## Run the chat interface locally
 
 Requirements:

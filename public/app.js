@@ -77,7 +77,7 @@ function addAssistantMessage(result) {
 
         const title = document.createElement('span');
         title.className = 'citation-title';
-        title.textContent = citation.section;
+        title.textContent = citation.sourceTitle;
 
         const page = document.createElement('span');
         page.className = 'citation-page';
