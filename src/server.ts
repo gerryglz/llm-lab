@@ -12,12 +12,31 @@ async function main(): Promise<void> {
     await loadRulebookIndex();
 
     const _server = createHttpApi();
-    _server.listen(_port, _host, () => {
-        console.log(`Dice Throne API ready at http://${_host}:${_port}`);
+    await new Promise<void>((resolve, reject) => {
+        const _onError = (error: Error) => reject(error);
+
+        _server.once('error', _onError);
+        _server.listen(_port, _host, () => {
+            _server.off('error', _onError);
+            console.log(`Dice Throne API ready at http://${_host}:${_port}`);
+            resolve();
+        });
     });
 }
 
 main().catch((error) => {
+    if (
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'EADDRINUSE'
+    ) {
+        console.error(
+            `Port ${_port} is already in use. Stop the previous Dice Throne server, then run npm run serve again.`
+        );
+        process.exitCode = 1;
+        return;
+    }
+
     console.error(error);
     process.exitCode = 1;
 });
