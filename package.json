@@ -11,6 +11,7 @@
     "eval:hard": "node dist/eval-hard.js",
     "eval:blind": "node dist/eval-blind.js",
     "eval:answers": "node dist/eval-answer.js",
+    "eval:evidence": "node dist/eval-evidence.js",
     "eval:source": "node dist/eval-source.js",
     "eval:advanced": "node dist/eval-advanced.js",
     "ingest:core": "node dist/ingest.js",
