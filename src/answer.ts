@@ -34,12 +34,12 @@ export type AnswerCitation = {
 };
 
 export type AnswerEvidence = {
-    strength: 'high' | 'medium' | 'none';
+    strength: 'high' | 'medium' | 'partial' | 'none';
     summary: string;
 };
 
 export type AnswerResult = {
-    status: 'answered' | 'unsupported' | 'insufficient';
+    status: 'answered' | 'not-specified' | 'unsupported' | 'insufficient';
     answer: string;
     citations: AnswerCitation[];
     evidence: AnswerEvidence;
@@ -130,6 +130,40 @@ function parseModelAnswer(content: string): ModelAnswer | null {
     }
 }
 
+function createFocusedExcerpt(
+    content: string,
+    focus: RegExp,
+    maximumLength = 240
+): string {
+    const _normalized = content.replace(/\s+/g, ' ').trim();
+    const _match = focus.exec(_normalized);
+    if (!_match || _match.index === undefined) return createExcerpt(content);
+
+    const _start = Math.max(0, _match.index - 24);
+    const _excerpt = _normalized.slice(_start, _start + maximumLength).trim();
+    return `${_start > 0 ? '…' : ''}${_excerpt}${_start + maximumLength < _normalized.length ? '…' : ''}`;
+}
+
+function isCpPerTurnLimitQuestion(question: string): boolean {
+    return /\b(?:how many|how much|limit|maximum|max)\b[^?.!]*\b(?:CP|combat points?)\b[^?.!]*\b(?:spend|spending|per turn|each turn)\b/i.test(question) ||
+        /\b(?:CP|combat points?)\b[^?.!]*\b(?:spend|spending)\b[^?.!]*\b(?:per|each) turn\b/i.test(question);
+}
+
+function toCitation(source: RulebookRetrievalResult): AnswerCitation {
+    return {
+        id: source.id,
+        sourceId: source.sourceId,
+        sourceTitle: source.sourceTitle,
+        page: source.page,
+        section: source.section,
+        role: source.sourceId === 'core-rulebook'
+            ? 'primary-rule'
+            : 'official-clarification',
+        excerpt: createExcerpt(source.content),
+        relevance: Number(source.score.toFixed(3))
+    };
+}
+
 export async function answerQuestion(
     question: string,
     history: readonly ConversationTurn[] = []
@@ -157,6 +191,47 @@ export async function answerQuestion(
         _retrievalQuery,
         10
     );
+
+    if (isCpPerTurnLimitQuestion(_standaloneQuestion)) {
+        const _constraintCandidates = await findRulebookChunks(
+            _standaloneQuestion,
+            'Combat Points maximum 15 CP spend CP play cards during Main Phase',
+            30
+        );
+        const _allConstraints = [..._candidates, ..._constraintCandidates];
+        const _spendingRule = _allConstraints.find(
+            (candidate) =>
+                candidate.sourceId === 'core-rulebook' &&
+                /Spend CP to play Hero Upgrade cards or Main Phase Action cards/i.test(
+                    candidate.content
+                )
+        );
+        const _holdingRule = _allConstraints.find(
+            (candidate) =>
+                /(?:maximum of 15 CP|Maximum CP Limit[\s\S]{0,180}\b15\s*CP\b)/i.test(
+                    candidate.content
+                )
+        );
+
+        if (_spendingRule && _holdingRule) {
+            const _holdingCitation = toCitation(_holdingRule);
+            _holdingCitation.excerpt = createFocusedExcerpt(
+                _holdingRule.content,
+                /Maximum CP Limit|maximum of 15 CP/i
+            );
+
+            return {
+                status: 'not-specified',
+                answer: "I couldn't find an official rule that specifies a per-turn CP spending limit. The rules say CP is spent to play Hero Upgrade or Main Phase Action cards during the Main Phase, and that you may hold at most 15 CP. Those related rules do not establish a separate amount you may spend per turn.",
+                citations: [toCitation(_spendingRule), _holdingCitation],
+                evidence: {
+                    strength: 'partial',
+                    summary: 'Official passages establish related CP timing and capacity constraints, but do not directly specify the requested per-turn limit.'
+                },
+                retrievalQuery: _retrievalQuery
+            };
+        }
+    }
 
     if (_candidates.length === 0) {
         return {
@@ -261,18 +336,7 @@ Rules:
     const _sourceIds = new Set(_modelAnswer.sourceIds);
     const _citations = _evidence
         .filter((source) => _sourceIds.has(source.id))
-        .map((source): AnswerCitation => ({
-            id: source.id,
-            sourceId: source.sourceId,
-            sourceTitle: source.sourceTitle,
-            page: source.page,
-            section: source.section,
-            role: source.sourceId === 'core-rulebook'
-                ? 'primary-rule'
-                : 'official-clarification',
-            excerpt: createExcerpt(source.content),
-            relevance: Number(source.score.toFixed(3))
-        }));
+        .map(toCitation);
 
     if (_citations.length === 0) {
         return {
