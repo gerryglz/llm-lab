@@ -66,7 +66,9 @@ Start the local HTTP API:
 npm run serve
 ```
 
-The server listens on `http://127.0.0.1:3000` by default. Check readiness with `GET /api/health`, then ask a question with:
+The server listens on `http://127.0.0.1:3000` by default. Check readiness with `GET /api/health`; it reports both the rulebook index and LM Studio dependency. Then ask a question with:
+
+Open that address in a browser to use the built-in chat interface. The interface shows evidence strength, source roles, and expandable excerpts alongside each grounded answer.
 
 ```sh
 curl -X POST http://127.0.0.1:3000/api/chat \

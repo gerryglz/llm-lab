@@ -27,10 +27,13 @@ const _fixture: AnswerResult = {
 
 async function main(): Promise<void> {
     const _questions: string[] = [];
-    const _server = createHttpApi(async (question) => {
-        _questions.push(question);
-        return _fixture;
-    });
+    const _server = createHttpApi(
+        async (question) => {
+            _questions.push(question);
+            return _fixture;
+        },
+        async () => true
+    );
 
     await new Promise<void>((resolve) => {
         _server.listen(0, '127.0.0.1', resolve);
@@ -44,6 +47,16 @@ async function main(): Promise<void> {
         const _healthBody = await _health.json() as { status?: string };
         const _healthPass = _health.status === 200 &&
             _healthBody.status === 'ready';
+
+        const _home = await fetch(_baseUrl);
+        const _homeText = await _home.text();
+        const _homePass = _home.status === 200 &&
+            _home.headers.get('content-type')?.includes('text/html') === true &&
+            _homeText.includes('Dice Throne Rules');
+
+        const _clientScript = await fetch(`${_baseUrl}/app.js`);
+        const _clientPass = _clientScript.status === 200 &&
+            _clientScript.headers.get('content-type')?.includes('text/javascript') === true;
 
         const _chat = await fetch(`${_baseUrl}/api/chat`, {
             method: 'POST',
@@ -67,6 +80,8 @@ async function main(): Promise<void> {
         const _missingPass = _missing.status === 404;
 
         const _results = [
+            ['Chat page', _homePass],
+            ['Browser client asset', _clientPass],
             ['Health endpoint', _healthPass],
             ['Chat response contract', _chatPass],
             ['Question validation', _invalidPass],
