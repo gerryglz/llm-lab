@@ -6,7 +6,6 @@ import type { QuestionPlan } from './question-planner.js';
 
 type PolicySource = {
     source: RulebookRetrievalResult;
-    excerptFocus?: RegExp;
 };
 
 export type PolicyResolution = {
@@ -123,10 +122,7 @@ async function resolveCombatPointLimit(
         evidenceSummary: 'Official passages establish related CP timing and capacity constraints, but do not directly specify the requested per-turn limit.',
         sources: [
             { source: _spendingRule },
-            {
-                source: _holdingRule,
-                excerptFocus: /Maximum CP Limit|maximum of 15 CP/i
-            }
+            { source: _holdingRule }
         ]
     };
 }
@@ -153,10 +149,7 @@ function resolveShortDeckLook(
         answer: 'No. Look only at the cards remaining in your deck; do not shuffle first. You shuffle the discard pile into a new deck only when you need to draw a card and the deck is empty.',
         evidenceStrength: 'high',
         evidenceSummary: 'An official clarification directly addresses looking at more cards than remain in the deck.',
-        sources: [{
-            source: _ruling,
-            excerptFocus: /You can only look at the remaining cards/i
-        }]
+        sources: [{ source: _ruling }]
     };
 }
 

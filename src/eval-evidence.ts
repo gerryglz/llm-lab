@@ -5,6 +5,7 @@ type EvidenceCase = {
     question: string;
     expectedStatus: 'answered' | 'unsupported';
     expectedRole?: 'primary-rule' | 'official-clarification';
+    expectedExcerptTerm?: string;
 };
 
 const _cases: readonly EvidenceCase[] = [
@@ -16,7 +17,8 @@ const _cases: readonly EvidenceCase[] = [
     {
         question: 'Can Twice as Wild change only one die?',
         expectedStatus: 'answered',
-        expectedRole: 'official-clarification'
+        expectedRole: 'official-clarification',
+        expectedExcerptTerm: 'Ruling Date: 01/06/2026'
     },
     {
         question: 'What is the strongest Dice Throne hero?',
@@ -40,6 +42,8 @@ async function main(): Promise<void> {
                 _result.citations.some((citation) =>
                     citation.role === _test.expectedRole &&
                     citation.excerpt.length > 20 &&
+                    (!_test.expectedExcerptTerm ||
+                        citation.excerpt.includes(_test.expectedExcerptTerm)) &&
                     citation.relevance > 0
                 );
         const _pass = _statusMatches && _evidenceMatches;

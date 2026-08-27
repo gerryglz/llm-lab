@@ -60,19 +60,8 @@ type ModelAnswer = {
     claims: AnswerClaim[];
 };
 
-function createExcerpt(content: string, maximumLength = 240): string {
-    const _normalized = content.replace(/\s+/g, ' ').trim();
-
-    if (_normalized.length <= maximumLength) return _normalized;
-
-    const _candidate = _normalized.slice(0, maximumLength);
-    const _sentenceEnd = Math.max(
-        _candidate.lastIndexOf('. '),
-        _candidate.lastIndexOf('? '),
-        _candidate.lastIndexOf('! ')
-    );
-
-    return `${_candidate.slice(0, _sentenceEnd > 100 ? _sentenceEnd + 1 : maximumLength).trim()}…`;
+function createExcerpt(content: string): string {
+    return content.replace(/\s+/g, ' ').trim();
 }
 
 function explainEvidence(citations: AnswerCitation[]): AnswerEvidence {
@@ -145,20 +134,6 @@ function parseModelAnswer(content: string): ModelAnswer | null {
     }
 }
 
-function createFocusedExcerpt(
-    content: string,
-    focus: RegExp,
-    maximumLength = 240
-): string {
-    const _normalized = content.replace(/\s+/g, ' ').trim();
-    const _match = focus.exec(_normalized);
-    if (!_match || _match.index === undefined) return createExcerpt(content);
-
-    const _start = Math.max(0, _match.index - 24);
-    const _excerpt = _normalized.slice(_start, _start + maximumLength).trim();
-    return `${_start > 0 ? '…' : ''}${_excerpt}${_start + maximumLength < _normalized.length ? '…' : ''}`;
-}
-
 function toCitation(source: RulebookRetrievalResult): AnswerCitation {
     return {
         id: source.id,
@@ -211,16 +186,9 @@ export async function answerQuestion(
     );
 
     if (_policy) {
-        const _citations = _policy.sources.map(({ source, excerptFocus }) => {
-            const _citation = toCitation(source);
-            if (excerptFocus) {
-                _citation.excerpt = createFocusedExcerpt(
-                    source.content,
-                    excerptFocus
-                );
-            }
-            return _citation;
-        });
+        const _citations = _policy.sources.map(({ source }) =>
+            toCitation(source)
+        );
 
         return {
             status: _policy.status,

@@ -26,6 +26,44 @@ function sourceRoleLabel(role) {
         : 'Primary rule';
 }
 
+function connectClaimsToSources(message) {
+    const claims = message.querySelectorAll('.claim');
+    const citations = message.querySelectorAll('.citation');
+
+    claims.forEach((claim) => {
+        claim.addEventListener('click', () => {
+            const sourceIds = new Set(
+                (claim.dataset.sourceIds ?? '').split(',').filter(Boolean)
+            );
+            const activating = claim.getAttribute('aria-pressed') !== 'true';
+
+            claims.forEach((item) => {
+                item.classList.remove('active');
+                item.setAttribute('aria-pressed', 'false');
+            });
+            citations.forEach((citation) => {
+                citation.classList.remove('claim-source', 'not-claim-source');
+            });
+
+            if (!activating) return;
+
+            claim.classList.add('active');
+            claim.setAttribute('aria-pressed', 'true');
+            let firstSource;
+            citations.forEach((citation) => {
+                if (sourceIds.has(citation.dataset.sourceId)) {
+                    citation.classList.add('claim-source');
+                    citation.open = true;
+                    firstSource ??= citation;
+                } else {
+                    citation.classList.add('not-claim-source');
+                }
+            });
+            firstSource?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    });
+}
+
 function addAssistantMessage(result) {
     const fragment = assistantTemplate.content.cloneNode(true);
     const message = fragment.querySelector('.message');
@@ -42,8 +80,12 @@ function addAssistantMessage(result) {
     if (result.claims?.length) {
         const claimList = message.querySelector('.claim-list');
         result.claims.forEach((claim, index) => {
-            const item = document.createElement('div');
+            const item = document.createElement('button');
+            item.type = 'button';
             item.className = 'claim';
+            item.dataset.sourceIds = claim.sourceIds.join(',');
+            item.setAttribute('aria-pressed', 'false');
+            item.setAttribute('aria-label', `Show sources for claim ${index + 1}`);
             const marker = document.createElement('span');
             marker.className = 'claim-marker';
             marker.textContent = String(index + 1);
@@ -69,6 +111,7 @@ function addAssistantMessage(result) {
     for (const citation of result.citations ?? []) {
         const detail = document.createElement('details');
         detail.className = 'citation';
+        detail.dataset.sourceId = citation.id;
 
         const summary = document.createElement('summary');
         const role = document.createElement('span');
@@ -90,6 +133,8 @@ function addAssistantMessage(result) {
         detail.append(summary, excerpt);
         citationList.append(detail);
     }
+
+    connectClaimsToSources(message);
 
     messages.append(fragment);
     scrollToLatest();
